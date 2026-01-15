@@ -1,36 +1,214 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# TeamTrainer - Fitness Training Platform
+
+A modern, beautiful, and intuitive platform for trainers to create workouts and team members to log their progress.
+
+## Features
+
+✨ **For Trainers:**
+- Create and schedule workout sessions with multiple exercises
+- Define sets, reps, and exercise details
+- Manage teams and invite members
+- Monitor team progress and completion rates
+
+📊 **For Members:**
+- View upcoming and completed workouts
+- Log weights, reps, and personal notes for each exercise
+- Track progress over time
+- Easy-to-use mobile-friendly interface
+
+🎨 **User Experience:**
+- Beautiful, modern UI with Tailwind CSS
+- Responsive design for all devices
+- Intuitive forms and workflows
+- Real-time feedback and validation
+
+## Tech Stack
+
+- **Frontend:** React 18, Next.js 15 (App Router)
+- **Styling:** Tailwind CSS, shadcn/ui
+- **Backend:** Next.js API Routes
+- **Database:** MongoDB with Mongoose
+- **Authentication:** bcryptjs for password hashing
+- **Form Handling:** React Hook Form, Zod
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- Node.js 18+
+- npm or yarn
+- MongoDB instance (local or cloud)
+
+### Installation
+
+1. **Navigate to project**
+   ```bash
+   cd team-training
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Configure environment variables**
+   ```bash
+   # Copy the example file
+   cp .env.example .env.local
+   
+   # Edit .env.local and add your MongoDB URI
+   MONGODB_URI=mongodb://localhost:27017/team-training
+   ```
+
+4. **Run the development server**
+   ```bash
+   npm run dev
+   ```
+
+5. **Open in browser**
+   ```
+   http://localhost:3000
+   ```
+
+## Project Structure
+
+```
+src/
+├── app/                    # Next.js App Router
+│   ├── auth/              # Authentication pages
+│   ├── dashboard/         # User dashboard
+│   ├── trainings/         # Training pages
+│   ├── teams/             # Team management
+│   ├── api/               # API routes
+│   └── page.tsx           # Home page
+├── components/            # Reusable React components
+│   └── ui/                # shadcn/ui components
+├── models/                # MongoDB schemas
+├── lib/
+│   ├── db/                # Database connection
+│   └── utils/             # Helper functions
+└── globals.css            # Global styles
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Database Models
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### User
+```typescript
+{
+  name: string
+  email: string (unique)
+  password: string (hashed)
+  role: 'trainer' | 'member'
+  team: ObjectId
+  createdAt: Date
+  updatedAt: Date
+}
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Team
+```typescript
+{
+  name: string
+  description: string
+  trainer: ObjectId
+  members: [ObjectId]
+  createdAt: Date
+  updatedAt: Date
+}
+```
 
-## Learn More
+### Training
+```typescript
+{
+  title: string
+  description: string
+  exercises: [{
+    name: string
+    sets: number
+    reps: string
+    notes: string
+  }]
+  team: ObjectId
+  trainer: ObjectId
+  scheduledDate: Date
+  status: 'scheduled' | 'completed' | 'cancelled'
+  createdAt: Date
+  updatedAt: Date
+}
+```
 
-To learn more about Next.js, take a look at the following resources:
+### WorkoutLog
+```typescript
+{
+  training: ObjectId
+  member: ObjectId
+  exercises: [{
+    exerciseName: string
+    setNumber: number
+    weight: number
+    reps: number
+    notes: string
+  }]
+  completedAt: Date
+  notes: string
+  createdAt: Date
+  updatedAt: Date
+}
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Key Components
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- **TrainingCard.tsx** - Display training details with action buttons
+- **CreateTrainingForm.tsx** - Form for trainers to create workouts
+- **WorkoutLogForm.tsx** - Form for members to log their workout data
+- **CreateTeamForm.tsx** - Form for creating teams
 
-## Deploy on Vercel
+## API Routes
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Authentication
+- `POST /api/auth/register` - Register new user
+- `POST /api/auth/login` - Login user
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Trainings (To be implemented)
+- `GET /api/trainings` - Get all trainings
+- `POST /api/trainings` - Create training
+- `GET /api/trainings/:id` - Get training details
+- `PATCH /api/trainings/:id` - Update training
+- `DELETE /api/trainings/:id` - Delete training
+
+### Workout Logs (To be implemented)
+- `POST /api/workouts` - Log workout
+- `GET /api/workouts/:trainingId` - Get workout logs
+
+## UI Components
+
+Uses shadcn/ui for professional, accessible components:
+- Button, Card, Input, Label, Form
+- Select, Tabs, Badge, Alert
+- Dialog, Dropdown Menu
+
+## Next Steps
+
+1. ✅ Project scaffold complete
+2. 🚀 Run development server: `npm run dev`
+3. 📝 Complete remaining API routes
+4. 🎨 Enhance dashboard pages
+5. 📊 Add progress analytics
+6. 📱 Test on mobile devices
+7. 🚀 Deploy to production
+
+## Environment Variables
+
+Create `.env.local` file:
+```
+MONGODB_URI=mongodb://localhost:27017/team-training
+NEXT_PUBLIC_API_URL=http://localhost:3000
+```
+
+## License
+
+MIT - Use freely for personal or commercial projects
+
+---
+
+Built with ❤️ for fitness enthusiasts
