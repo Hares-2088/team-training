@@ -106,6 +106,11 @@ export default function MyTrainingsPage() {
                 ) : (
                     <div className="grid grid-cols-1 gap-6">
                         {workoutLogs.map((log) => {
+                            // Skip logs where training has been deleted
+                            if (!log.training) {
+                                return null;
+                            }
+
                             const uniqueExercises = getUniqueExercises(log.exercises);
                             const totalSets = getTotalSets(log.exercises);
                             const totalVolume = getTotalVolume(log.exercises);
