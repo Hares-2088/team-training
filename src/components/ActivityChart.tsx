@@ -9,6 +9,11 @@ type ActivityData =
     | Array<{ date: string; workouts: number }>
     | Array<{ date: string;[key: string]: string | number }>;
 
+type TrainingDay = {
+    isCompleted: boolean;
+    title?: string;
+};
+
 export function ActivityChart({ isTrainer }: { isTrainer: boolean }) {
     const router = useRouter();
     const [data, setData] = useState<ActivityData>([]);
@@ -18,6 +23,7 @@ export function ActivityChart({ isTrainer }: { isTrainer: boolean }) {
     const [month, setMonth] = useState(new Date());
     const [hoveredDate, setHoveredDate] = useState<string | null>(null);
     const [hoveredMemberCount, setHoveredMemberCount] = useState<number>(0);
+    const [trainingDays, setTrainingDays] = useState<Map<string, TrainingDay>>(new Map());
 
     useEffect(() => {
         const fetchActivity = async () => {
@@ -46,7 +52,47 @@ export function ActivityChart({ isTrainer }: { isTrainer: boolean }) {
             }
         };
 
+        const fetchTrainingData = async () => {
+            // Only fetch training data for members
+            if (isTrainer) return;
+
+            try {
+                // Fetch trainings
+                const trainingsRes = await fetch('/api/trainings');
+                if (!trainingsRes.ok) throw new Error('Failed to fetch trainings');
+                const { trainings } = await trainingsRes.json();
+
+                // Fetch workout logs to check completions
+                const logsRes = await fetch('/api/workout-logs');
+                if (!logsRes.ok) throw new Error('Failed to fetch workout logs');
+                const workoutLogs = await logsRes.json();
+
+                // Create map of completed training IDs
+                const completedTrainings = new Set(
+                    workoutLogs.map((log: any) => log.training._id)
+                );
+
+                // Build training days map
+                const days = new Map<string, TrainingDay>();
+                trainings.forEach((training: any) => {
+                    const date = new Date(training.scheduledDate);
+                    const dateString = date.toISOString().split('T')[0];
+                    const isCompleted = completedTrainings.has(training._id);
+
+                    days.set(dateString, {
+                        isCompleted,
+                        title: training.title,
+                    });
+                });
+
+                setTrainingDays(days);
+            } catch (error) {
+                console.error('Error fetching training data:', error);
+            }
+        };
+
         fetchActivity();
+        fetchTrainingData();
     }, [isTrainer]);
 
     const calculateStreak = (activity: ActivityData) => {
@@ -210,6 +256,28 @@ export function ActivityChart({ isTrainer }: { isTrainer: boolean }) {
                                 const isHovered = hoveredDate === dateStr;
                                 const memberCount = isTrainer ? getTrainerMemberCount(day) : 0;
 
+                                // Check if this day has a scheduled training (for members)
+                                const trainingData = !isTrainer ? trainingDays.get(dateStr) : null;
+                                const hasScheduledTraining = trainingData !== undefined;
+                                const isTrainingCompleted = trainingData?.isCompleted ?? false;
+
+                                // Determine the color:
+                                // - Blue for completed trainings (from activity data)
+                                // - Pale blue for scheduled but not completed (from training data)
+                                // - Gray for no training
+                                let bgColor = 'bg-slate-100 dark:bg-slate-800';
+                                let textColor = 'text-slate-700 dark:text-slate-300';
+
+                                if (active) {
+                                    // Has activity (completed workout)
+                                    bgColor = 'bg-blue-600 dark:bg-blue-500';
+                                    textColor = 'text-white';
+                                } else if (hasScheduledTraining && !isTrainingCompleted) {
+                                    // Scheduled but not completed
+                                    bgColor = 'bg-blue-100 dark:bg-blue-900';
+                                    textColor = 'text-slate-700 dark:text-slate-200';
+                                }
+
                                 return (
                                     <div
                                         key={day}
@@ -221,13 +289,12 @@ export function ActivityChart({ isTrainer }: { isTrainer: boolean }) {
                                         }}
                                         onMouseLeave={() => setHoveredDate(null)}
                                         onClick={() => handleDateClick(day)}
+                                        title={trainingData ? trainingData.title : ''}
                                         className={`
                                             relative aspect-square rounded-lg flex items-center justify-center font-semibold text-sm
                                             transition-all
-                                            ${active
-                                                ? 'bg-blue-600 dark:bg-blue-500 text-white shadow-lg'
-                                                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
-                                            }
+                                            ${bgColor}
+                                            ${textColor}
                                             ${isCurrentDay ? 'ring-2 ring-offset-2 ring-blue-600 dark:ring-offset-slate-900' : ''}
                                             ${isTrainer && active ? 'cursor-pointer hover:shadow-xl' : ''}
                                         `}
@@ -247,11 +314,17 @@ export function ActivityChart({ isTrainer }: { isTrainer: boolean }) {
                         </div>
 
                         {/* Legend */}
-                        <div className="flex gap-4 text-sm mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+                        <div className="flex gap-4 text-sm mt-4 pt-4 border-t border-slate-200 dark:border-slate-700 flex-wrap">
                             <div className="flex items-center gap-2">
                                 <div className="w-4 h-4 bg-blue-600 dark:bg-blue-500 rounded"></div>
                                 <span className="text-slate-600 dark:text-slate-400">Trained</span>
                             </div>
+                            {!isTrainer && (
+                                <div className="flex items-center gap-2">
+                                    <div className="w-4 h-4 bg-blue-100 dark:bg-blue-900 rounded border border-blue-300 dark:border-blue-700"></div>
+                                    <span className="text-slate-600 dark:text-slate-400">Scheduled</span>
+                                </div>
+                            )}
                             <div className="flex items-center gap-2">
                                 <div className="w-4 h-4 bg-slate-100 dark:bg-slate-800 rounded"></div>
                                 <span className="text-slate-600 dark:text-slate-400">No training</span>

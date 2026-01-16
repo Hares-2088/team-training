@@ -11,12 +11,13 @@ import { Loader } from 'lucide-react';
 export default function InviteLinkPage() {
     const params = useParams();
     const router = useRouter();
-    const { user, loading: authLoading } = useAuth();
+    const { user, loading: authLoading, logout } = useAuth();
     const teamId = params.id as string;
 
     const [isJoining, setIsJoining] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [teamName, setTeamName] = useState<string | null>(null);
+    const [showRegisterOption, setShowRegisterOption] = useState(false);
 
     useEffect(() => {
         // If not authenticated, redirect to register with team context
@@ -25,9 +26,9 @@ export default function InviteLinkPage() {
             return;
         }
 
-        // If authenticated, auto-join
+        // If authenticated, show option to join or create new account
         if (user) {
-            joinTeam();
+            setShowRegisterOption(true);
         }
     }, [user, authLoading]);
 
@@ -61,6 +62,18 @@ export default function InviteLinkPage() {
         }
     };
 
+    const handleCreateNewAccount = async () => {
+        setIsJoining(true);
+        try {
+            await logout();
+            // After logout completes, redirect to register with team context
+            router.push(`/auth/register?team=${teamId}`);
+        } catch (err) {
+            setError('Failed to log out. Please try again.');
+            setIsJoining(false);
+        }
+    };
+
     return (
         <div className="min-h-screen bg-white dark:bg-slate-950">
             <nav className="border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 sticky top-0 z-50">
@@ -73,9 +86,12 @@ export default function InviteLinkPage() {
             <main className="max-w-md mx-auto px-4 sm:px-6 lg:px-8 py-12 flex items-center justify-center min-h-[calc(100vh-80px)]">
                 <Card className="card-base w-full">
                     <CardHeader className="text-center">
-                        <CardTitle className="text-2xl">Joining Team...</CardTitle>
+                        <CardTitle className="text-2xl">
+                            {showRegisterOption && !isJoining && !teamName ? 'Join Team' : 'Joining Team...'}
+                        </CardTitle>
                         <CardDescription>
-                            {isJoining || authLoading ? 'Please wait while we set everything up' : 'Team invite link'}
+                            {isJoining || authLoading ? 'Please wait while we set everything up' :
+                                showRegisterOption && !teamName ? 'Choose how to proceed' : 'Team invite link'}
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4 text-center">
@@ -88,6 +104,22 @@ export default function InviteLinkPage() {
                         {error && (
                             <div className="rounded-md border border-danger-200 dark:border-danger-800 bg-danger-50 dark:bg-danger-950 px-4 py-3 text-sm text-danger-700 dark:text-danger-200">
                                 {error}
+                            </div>
+                        )}
+
+                        {showRegisterOption && !isJoining && !authLoading && !teamName && !error && (
+                            <div className="space-y-4">
+                                <p className="text-slate-700 dark:text-slate-300 mb-4">
+                                    You're currently logged in as <strong>{user?.name}</strong>.
+                                </p>
+                                <div className="space-y-3">
+                                    <Button onClick={joinTeam} className="w-full" variant="default">
+                                        Join with Current Account
+                                    </Button>
+                                    <Button onClick={handleCreateNewAccount} className="w-full" variant="outline">
+                                        Create New Account
+                                    </Button>
+                                </div>
                             </div>
                         )}
 
