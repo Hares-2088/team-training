@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 
 type User = {
@@ -20,32 +20,38 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+export function AuthProvider({ children }: { readonly children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
     const router = useRouter();
 
-    useEffect(() => {
-        checkAuth();
-    }, []);
-
-    const checkAuth = async () => {
+    const checkAuth = useCallback(async () => {
         try {
-            const res = await fetch('/api/auth/me');
+            const res = await fetch('/api/auth/me', {
+                method: 'GET',
+                credentials: 'include',
+            });
             if (res.ok) {
                 const data = await res.json();
-                setUser(data.user);
+                if (data.user) {
+                    setUser(data.user);
+                }
             }
         } catch (error) {
             console.error('Auth check failed:', error);
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
-    const login = async (email: string, password: string) => {
+    useEffect(() => {
+        checkAuth();
+    }, [checkAuth]);
+
+    const login = useCallback(async (email: string, password: string) => {
         const res = await fetch('/api/auth/login', {
             method: 'POST',
+            credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, password }),
         });
@@ -58,11 +64,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const data = await res.json();
         setUser(data.user);
         router.push('/dashboard');
-    };
+    }, [router]);
 
-    const register = async (name: string, email: string, password: string, role: 'trainer' | 'member', teamId?: string) => {
+    const register = useCallback(async (name: string, email: string, password: string, role: 'trainer' | 'member', teamId?: string) => {
         const res = await fetch('/api/auth/register', {
             method: 'POST',
+            credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ name, email, password, role }),
         });
@@ -81,16 +88,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else {
             router.push('/auth/role-select');
         }
-    };
+    }, [router]);
 
-    const logout = async () => {
-        await fetch('/api/auth/logout', { method: 'POST' });
+    const logout = useCallback(async () => {
+        await fetch('/api/auth/logout', {
+            method: 'POST',
+            credentials: 'include',
+        });
         setUser(null);
         router.push('/auth/login');
-    };
+    }, [router]);
+
+    const value = useMemo(() => ({ user, loading, login, register, logout }), [user, loading, login, register, logout]);
 
     return (
-        <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+        <AuthContext.Provider value={value}>
             {children}
         </AuthContext.Provider>
     );

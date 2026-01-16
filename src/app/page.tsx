@@ -12,14 +12,11 @@ export default function Home() {
       <nav className="border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 backdrop-blur-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-bold text-primary-600 dark:text-primary-400">💪 TeamTrainer</h1>
+            <h1 className="text-2xl font-bold text-primary-600 dark:text-primary-400">💪 FiT Team</h1>
             <div className="flex gap-3 items-center">
               <ThemeToggle />
               <Link href="/auth/login">
                 <Button variant="outline">Sign In</Button>
-              </Link>
-              <Link href="/auth/register">
-                <Button>Get Started</Button>
               </Link>
             </div>
           </div>

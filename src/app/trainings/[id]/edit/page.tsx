@@ -38,7 +38,9 @@ export default function EditTrainingPage() {
     useEffect(() => {
         const fetchTraining = async () => {
             try {
-                const res = await fetch(`/api/trainings/${id}`);
+                const res = await fetch(`/api/trainings/${id}`, {
+                    credentials: 'include',
+                });
                 if (!res.ok) {
                     const payload = await res.json();
                     throw new Error(payload.error || 'Failed to load training');
@@ -63,6 +65,7 @@ export default function EditTrainingPage() {
         try {
             const response = await fetch(`/api/trainings/${id}`, {
                 method: 'PATCH',
+                credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     title: data.title,
@@ -158,7 +161,7 @@ export default function EditTrainingPage() {
                     initialData={{
                         title: training.title,
                         description: training.description || '',
-                        scheduledDate: training.scheduledDate.slice(0, 16),
+                        scheduledDate: new Date(training.scheduledDate).toISOString().split('T')[0],
                         exercises: training.exercises.map(ex => ({ ...ex, notes: ex.notes || '' })),
                         teamId: training.team?._id || '',
                     }}

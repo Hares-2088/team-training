@@ -27,30 +27,49 @@ export async function GET(request: NextRequest) {
             const teams = await Team.find({ trainer: decoded.userId });
             const teamIds = teams.map((t) => t._id);
 
-            // Get all workout logs for trainings in these teams
-            const trainings = await Training.find({ team: { $in: teamIds } });
-            const trainingIds = trainings.map((t) => t._id);
+            console.log('Trainer activity - Teams found:', teamIds.length, 'Team IDs:', teamIds);
 
+            if (teamIds.length === 0) {
+                return NextResponse.json({ activity: [], isTrainer: true });
+            }
+
+            // Get all members in trainer's teams
+            const memberIds = teams.flatMap((t) => t.members);
+
+            // Get all workout logs by members in these teams (regardless of training)
             const logs = await WorkoutLog.find({
-                training: { $in: trainingIds },
+                member: { $in: memberIds }
             })
                 .populate('member', 'name')
-                .populate('training', 'team')
+                .populate('training', 'team title')
                 .sort({ createdAt: -1 });
 
-            // Group by date and team
+            console.log('Trainer activity - Logs found:', logs.length);
+
+            // Group by date and team, filtering only logs from trainer's teams
             const activityByDateAndTeam: {
                 [key: string]: { [key: string]: Set<string> };
             } = {};
 
             logs.forEach((log) => {
+                // Check if training exists and belongs to trainer's teams
+                if (!log.training || !log.training.team) {
+                    console.log('Skipping log - training not found or missing team:', log._id);
+                    return;
+                }
+
+                const trainingTeamId = log.training.team.toString();
+                if (!teamIds.some(tId => tId.toString() === trainingTeamId)) {
+                    console.log('Skipping log - training not in trainer teams:', log._id);
+                    return;
+                }
+
                 const date = log.createdAt
                     ? new Date(log.createdAt).toISOString().split('T')[0]
                     : 'Unknown';
 
-                // Find team name for this log
-                const training = trainings.find((t) => t._id.toString() === log.training?._id?.toString());
-                const team = teams.find((t) => t._id.toString() === training?.team?.toString());
+                // Find team name
+                const team = teams.find((t) => t._id.toString() === trainingTeamId);
                 const teamName = team?.name || 'Unknown Team';
 
                 if (!activityByDateAndTeam[date]) {
@@ -71,6 +90,8 @@ export async function GET(request: NextRequest) {
                     Object.entries(teamData).map(([team, members]) => [team, members.size])
                 ),
             }));
+
+            console.log('Trainer activity - Formatted data:', formattedData);
 
             return NextResponse.json({ activity: formattedData, isTrainer: true });
         } else {

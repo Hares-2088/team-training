@@ -95,7 +95,7 @@ export async function PATCH(
         }
 
         const updates: Record<string, unknown> = {};
-        const allowedFields = ['title', 'description', 'exercises', 'scheduledDate', 'status', 'team'];
+        const allowedFields = ['title', 'description', 'exercises', 'scheduledDate', 'status'];
 
         for (const field of allowedFields) {
             if (field in body) {

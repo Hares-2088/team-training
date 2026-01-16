@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { NumberInput } from '@/components/ui/number-input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DatePicker } from '@/components/ui/date-picker';
 import { useState, useEffect } from 'react';
 
 interface Exercise {
@@ -122,14 +123,12 @@ export function CreateTrainingForm({
                     </div>
 
                     <div>
-                        <Label htmlFor="date">Scheduled Date & Time</Label>
-                        <Input
+                        <Label htmlFor="date">Scheduled Date</Label>
+                        <DatePicker
                             id="date"
-                            type="datetime-local"
                             value={scheduledDate}
-                            onChange={(e) => setScheduledDate(e.target.value)}
+                            onChange={setScheduledDate}
                             required
-                            className="mt-2"
                         />
                     </div>
 

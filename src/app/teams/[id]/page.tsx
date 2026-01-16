@@ -6,9 +6,10 @@ import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Navbar } from '@/components/Navbar';
-import { ChevronLeft, Edit, Trash2, Users, Mail, UserPlus } from 'lucide-react';
+import { ChevronLeft, Edit, Trash2, Users, Mail, UserPlus, Eye } from 'lucide-react';
 import { AddMemberModal } from '@/components/AddMemberModal';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -40,6 +41,8 @@ export default function TeamDetailPage() {
     const [isDeleting, setIsDeleting] = useState(false);
     const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
     const [showAddMemberModal, setShowAddMemberModal] = useState(false);
+    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+    const [showRemoveMemberDialog, setShowRemoveMemberDialog] = useState<{ isOpen: boolean; memberId: string; memberName: string }>({ isOpen: false, memberId: '', memberName: '' });
 
     useEffect(() => {
         const fetchTeam = async () => {
@@ -63,27 +66,33 @@ export default function TeamDetailPage() {
         fetchTeam();
     }, [id]);
 
-    const handleDelete = async () => {
-        if (!confirm('Are you sure you want to delete this team?')) return;
+    const handleConfirmDelete = async () => {
         setIsDeleting(true);
         try {
             const res = await fetch(`/api/teams/${id}`, {
                 method: 'DELETE',
+                credentials: 'include',
             });
             if (!res.ok) throw new Error('Failed to delete team');
             router.push('/teams');
         } catch (err) {
             alert(err instanceof Error ? err.message : 'Failed to delete team');
             setIsDeleting(false);
+            setShowDeleteDialog(false);
         }
     };
 
-    const handleRemoveMember = async (memberId: string) => {
-        if (!confirm('Are you sure you want to remove this member?')) return;
+    const handleRemoveMemberClick = (memberId: string, memberName: string) => {
+        setShowRemoveMemberDialog({ isOpen: true, memberId, memberName });
+    };
+
+    const handleConfirmRemoveMember = async () => {
+        const memberId = showRemoveMemberDialog.memberId;
         setRemovingMemberId(memberId);
         try {
             const res = await fetch(`/api/teams/${id}/members/${memberId}`, {
                 method: 'DELETE',
+                credentials: 'include',
             });
             if (!res.ok) {
                 const payload = await res.json();
@@ -94,6 +103,7 @@ export default function TeamDetailPage() {
                 ...prev,
                 members: prev.members?.filter(m => m._id !== memberId) || []
             } : null);
+            setShowRemoveMemberDialog({ isOpen: false, memberId: '', memberName: '' });
         } catch (err) {
             alert(err instanceof Error ? err.message : 'Failed to remove member');
         } finally {
@@ -196,11 +206,11 @@ export default function TeamDetailPage() {
                                 </Button>
                                 <Button
                                     variant="destructive"
-                                    onClick={handleDelete}
+                                    onClick={() => setShowDeleteDialog(true)}
                                     disabled={isDeleting}
                                 >
                                     <Trash2 className="w-4 h-4 mr-2" />
-                                    {isDeleting ? 'Deleting...' : 'Delete'}
+                                    Delete
                                 </Button>
                             </div>
                         )}
@@ -228,16 +238,29 @@ export default function TeamDetailPage() {
                                                     {member.email}
                                                 </p>
                                             </div>
-                                            {user?.role === 'trainer' && (
-                                                <Button
-                                                    variant="destructive"
-                                                    size="sm"
-                                                    onClick={() => handleRemoveMember(member._id)}
-                                                    disabled={removingMemberId === member._id}
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </Button>
-                                            )}
+                                            <div className="flex gap-2">
+                                                {user?.role === 'trainer' && (
+                                                    <>
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={() => router.push(`/teams/${id}/members/${member._id}`)}
+                                                            className="flex items-center gap-2"
+                                                        >
+                                                            <Eye className="w-4 h-4" />
+                                                            View Logs
+                                                        </Button>
+                                                        <Button
+                                                            variant="destructive"
+                                                            size="sm"
+                                                            onClick={() => handleRemoveMemberClick(member._id, member.name)}
+                                                            disabled={removingMemberId === member._id}
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </Button>
+                                                    </>
+                                                )}
+                                            </div>
                                         </div>
                                     </CardContent>
                                 </Card>
@@ -261,6 +284,64 @@ export default function TeamDetailPage() {
                     teamName={team.name}
                 />
             )}
+
+            {/* Delete Team Confirmation Dialog */}
+            <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Delete Team</DialogTitle>
+                        <DialogDescription>
+                            Are you sure you want to delete "<span className="font-semibold">{team?.name}</span>"? This action cannot be undone.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="gap-2">
+                        <Button
+                            variant="outline"
+                            onClick={() => setShowDeleteDialog(false)}
+                            disabled={isDeleting}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            onClick={handleConfirmDelete}
+                            disabled={isDeleting}
+                        >
+                            {isDeleting ? 'Deleting...' : 'Delete'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Remove Member Confirmation Dialog */}
+            <Dialog open={showRemoveMemberDialog.isOpen} onOpenChange={(open) => {
+                if (!open) setShowRemoveMemberDialog({ isOpen: false, memberId: '', memberName: '' });
+            }}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Remove Member</DialogTitle>
+                        <DialogDescription>
+                            Are you sure you want to remove "<span className="font-semibold">{showRemoveMemberDialog.memberName}</span>" from the team?
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="gap-2">
+                        <Button
+                            variant="outline"
+                            onClick={() => setShowRemoveMemberDialog({ isOpen: false, memberId: '', memberName: '' })}
+                            disabled={removingMemberId !== null}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            onClick={handleConfirmRemoveMember}
+                            disabled={removingMemberId !== null}
+                        >
+                            {removingMemberId ? 'Removing...' : 'Remove'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

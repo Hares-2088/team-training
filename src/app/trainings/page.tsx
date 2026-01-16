@@ -3,9 +3,11 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { TrainingCard } from '@/components/TrainingCard';
 import { Navbar } from '@/components/Navbar';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 type Training = {
@@ -27,10 +29,17 @@ type WorkoutLog = {
 
 export default function TrainingsPage() {
     const { user } = useAuth();
+    const router = useRouter();
     const [trainings, setTrainings] = useState<Training[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [filter, setFilter] = useState<'all' | 'scheduled' | 'completed'>('all');
+    const [deleteDialog, setDeleteDialog] = useState<{ isOpen: boolean; trainingId: string; title: string }>({
+        isOpen: false,
+        trainingId: '',
+        title: '',
+    });
+    const [isDeleting, setIsDeleting] = useState(false);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -51,7 +60,9 @@ export default function TrainingsPage() {
 
                 // Create a Set of training IDs that the user has completed
                 const completedTrainingIds = new Set(
-                    workoutLogsData.map((log: WorkoutLog) => log.training._id || log.training)
+                    workoutLogsData
+                        .filter((log: WorkoutLog) => log.training) // Only include logs with training
+                        .map((log: WorkoutLog) => log.training._id || log.training)
                 );
 
                 // Mark trainings as completed if user has a workout log for them
@@ -80,6 +91,39 @@ export default function TrainingsPage() {
         return training.status === filter;
     });
 
+    const handleEdit = (trainingId: string) => {
+        router.push(`/trainings/${trainingId}/edit`);
+    };
+
+    const handleDeleteClick = (trainingId: string, title: string) => {
+        setDeleteDialog({ isOpen: true, trainingId, title });
+    };
+
+    const handleConfirmDelete = async () => {
+        const trainingId = deleteDialog.trainingId;
+        setIsDeleting(true);
+
+        try {
+            const res = await fetch(`/api/trainings/${trainingId}`, {
+                method: 'DELETE',
+                credentials: 'include',
+            });
+
+            if (!res.ok) {
+                const payload = await res.json();
+                throw new Error(payload.error || 'Failed to delete training');
+            }
+
+            // Remove from local state
+            setTrainings((prev) => prev.filter((t) => t._id !== trainingId));
+            setDeleteDialog({ isOpen: false, trainingId: '', title: '' });
+        } catch (err) {
+            alert(err instanceof Error ? err.message : 'Failed to delete training');
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
     return (
         <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-50">
             <Navbar currentPage="workouts" />
@@ -92,9 +136,11 @@ export default function TrainingsPage() {
                         <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Workout Plans</h2>
                         <p className="text-slate-600 dark:text-slate-400 mt-1">View and manage your team workouts</p>
                     </div>
-                    <Link href="/trainings/create">
-                        <Button size="lg">Create Training</Button>
-                    </Link>
+                    {user?.role === 'trainer' && (
+                        <Link href="/trainings/create">
+                            <Button size="lg">Create Training</Button>
+                        </Link>
+                    )}
                 </div>
 
                 {/* Filter Tabs */}
@@ -146,6 +192,8 @@ export default function TrainingsPage() {
                                     status={training.status}
                                     userCompleted={training.userCompleted}
                                     isTrainer={user?.role === 'trainer'}
+                                    onEdit={() => handleEdit(training._id)}
+                                    onDelete={() => handleDeleteClick(training._id, training.title)}
                                 />
                             ))
                         ) : (
@@ -169,6 +217,36 @@ export default function TrainingsPage() {
                     )}
                 </div>
             </main>
+
+            {/* Delete Confirmation Dialog */}
+            <Dialog open={deleteDialog.isOpen} onOpenChange={(open) => {
+                if (!open) setDeleteDialog({ isOpen: false, trainingId: '', title: '' });
+            }}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Delete Training</DialogTitle>
+                        <DialogDescription>
+                            Are you sure you want to delete "<span className="font-semibold">{deleteDialog.title}</span>"? This action cannot be undone.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="gap-2">
+                        <Button
+                            variant="outline"
+                            onClick={() => setDeleteDialog({ isOpen: false, trainingId: '', title: '' })}
+                            disabled={isDeleting}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            onClick={handleConfirmDelete}
+                            disabled={isDeleting}
+                        >
+                            {isDeleting ? 'Deleting...' : 'Delete'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

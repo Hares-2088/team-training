@@ -6,8 +6,10 @@ import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { ChevronLeft, Edit, Trash2, Calendar, Dumbbell } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 type Training = {
     _id: string;
@@ -27,6 +29,7 @@ type Training = {
 };
 
 export default function TrainingDetailPage() {
+    const { user } = useAuth();
     const params = useParams();
     const router = useRouter();
     const id = params.id as string;
@@ -35,6 +38,7 @@ export default function TrainingDetailPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
     useEffect(() => {
         const fetchTraining = async () => {
@@ -83,11 +87,7 @@ export default function TrainingDetailPage() {
         });
     };
 
-    const handleDelete = async () => {
-        if (!confirm('Are you sure you want to delete this training? This action cannot be undone.')) {
-            return;
-        }
-
+    const handleConfirmDelete = async () => {
         setIsDeleting(true);
         try {
             const res = await fetch(`/api/trainings/${id}`, {
@@ -104,6 +104,7 @@ export default function TrainingDetailPage() {
             const message = err instanceof Error ? err.message : 'Failed to delete training';
             setError(message);
             setIsDeleting(false);
+            setShowDeleteDialog(false);
         }
     };
 
@@ -203,22 +204,24 @@ export default function TrainingDetailPage() {
                         </div>
 
                         {/* Action Buttons */}
-                        <div className="flex gap-3">
-                            <Link href={`/trainings/${id}/edit`} className="flex-1">
-                                <Button className="btn-primary w-full">
-                                    <Edit className="w-4 h-4 mr-2" />
-                                    Edit Training
+                        {user?.role === 'trainer' && (
+                            <div className="flex gap-3">
+                                <Link href={`/trainings/${id}/edit`} className="flex-1">
+                                    <Button className="btn-primary w-full">
+                                        <Edit className="w-4 h-4 mr-2" />
+                                        Edit Training
+                                    </Button>
+                                </Link>
+                                <Button
+                                    variant="destructive"
+                                    onClick={() => setShowDeleteDialog(true)}
+                                    disabled={isDeleting}
+                                >
+                                    <Trash2 className="w-4 h-4 mr-2" />
+                                    Delete
                                 </Button>
-                            </Link>
-                            <Button
-                                variant="destructive"
-                                onClick={handleDelete}
-                                disabled={isDeleting}
-                            >
-                                <Trash2 className="w-4 h-4 mr-2" />
-                                {isDeleting ? 'Deleting...' : 'Delete'}
-                            </Button>
-                        </div>
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
 
@@ -283,6 +286,34 @@ export default function TrainingDetailPage() {
                     </div>
                 </div>
             </main>
+
+            {/* Delete Confirmation Dialog */}
+            <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Delete Training</DialogTitle>
+                        <DialogDescription>
+                            Are you sure you want to delete "<span className="font-semibold">{training?.title}</span>"? This action cannot be undone.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="gap-2">
+                        <Button
+                            variant="outline"
+                            onClick={() => setShowDeleteDialog(false)}
+                            disabled={isDeleting}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            onClick={handleConfirmDelete}
+                            disabled={isDeleting}
+                        >
+                            {isDeleting ? 'Deleting...' : 'Delete'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

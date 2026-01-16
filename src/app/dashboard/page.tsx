@@ -63,8 +63,23 @@ export default function Dashboard() {
                             <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow cursor-pointer">
                                 <CardHeader>
                                     <CardTitle className="flex items-center gap-2">
+                                        <span className="text-2xl">🏋️</span>
+                                        <span className="inline-block">View Workout Plans</span>
+                                    </CardTitle>
+                                    <CardDescription>See all workout plans for your teams</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <Link href="/trainings">
+                                        <Button className="w-full">Browse Plans</Button>
+                                    </Link>
+                                </CardContent>
+                            </Card>
+
+                            <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow cursor-pointer">
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2">
                                         <span className="text-2xl">👥</span>
-                                        Manage Teams
+                                        <span className="inline-block">Manage Teams</span>
                                     </CardTitle>
                                     <CardDescription>Create teams and invite members</CardDescription>
                                 </CardHeader>
@@ -80,14 +95,14 @@ export default function Dashboard() {
                             <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow cursor-pointer">
                                 <CardHeader>
                                     <CardTitle className="flex items-center gap-2">
-                                        <span className="text-2xl">📋</span>
-                                        Workout Plans
+                                        <span className="text-2xl">🏋️</span>
+                                        <span className="inline-block">View Workout Plans</span>
                                     </CardTitle>
-                                    <CardDescription>View your team's scheduled trainings</CardDescription>
+                                    <CardDescription>Browse and log your workouts</CardDescription>
                                 </CardHeader>
                                 <CardContent>
                                     <Link href="/trainings">
-                                        <Button className="w-full">View Workout Plans</Button>
+                                        <Button className="w-full">Browse Plans</Button>
                                     </Link>
                                 </CardContent>
                             </Card>
@@ -96,7 +111,7 @@ export default function Dashboard() {
                                 <CardHeader>
                                     <CardTitle className="flex items-center gap-2">
                                         <span className="text-2xl">📊</span>
-                                        My Workout Stats
+                                        <span className="inline-block">My Workout Stats</span>
                                     </CardTitle>
                                     <CardDescription>View your workout history and progress</CardDescription>
                                 </CardHeader>
