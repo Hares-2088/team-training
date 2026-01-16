@@ -26,7 +26,10 @@ export async function GET(request: NextRequest) {
                 { trainer: decoded.userId },
                 { members: decoded.userId }
             ]
-        }).select('_id name').sort({ name: 1 });
+        })
+            .populate('trainer', 'name email')
+            .populate('members', 'name email')
+            .sort({ name: 1 });
 
         return NextResponse.json(teams);
     } catch (error) {

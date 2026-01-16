@@ -123,16 +123,12 @@ export default function TeamsPage() {
                                     <div className="space-y-4">
                                         <div className="flex justify-between text-sm text-slate-600 dark:text-slate-400">
                                             <span>👥 {team.members?.length || 0} members</span>
-                                            <span>👨‍🏫 {team.trainer?.name || 'No trainer'}</span>
                                         </div>
-                                        <div className="flex gap-2">
-                                            <Link href={`/teams/${team._id}`} className="flex-1">
-                                                <Button className="w-full" variant="default">
-                                                    View Team
-                                                </Button>
-                                            </Link>
-                                            <Button variant="outline">Edit</Button>
-                                        </div>
+                                        <Link href={`/teams/${team._id}`} className="w-full">
+                                            <Button className="w-full" variant="default">
+                                                View Team
+                                            </Button>
+                                        </Link>
                                     </div>
                                 </CardContent>
                             </Card>

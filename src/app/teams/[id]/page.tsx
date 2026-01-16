@@ -216,7 +216,8 @@ export default function TeamDetailPage() {
 
                     <div className="grid grid-cols-1 gap-4">
                         {team.members && team.members.length > 0 ? (
-                            team.members.map((member) => (
+                            // Filter out duplicate members by _id
+                            Array.from(new Map(team.members.map(m => [m._id, m])).values()).map((member) => (
                                 <Card key={member._id} className="hover:shadow-md transition-shadow">
                                     <CardContent className="pt-6">
                                         <div className="flex items-center justify-between">

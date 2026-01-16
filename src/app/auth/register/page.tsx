@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -18,6 +19,8 @@ import { useAuth } from '@/contexts/AuthContext';
 
 export default function Register() {
     const { register } = useAuth();
+    const searchParams = useSearchParams();
+    const teamId = searchParams.get('team');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [formData, setFormData] = useState({
@@ -37,7 +40,7 @@ export default function Register() {
         setError('');
 
         try {
-            await register(formData.name, formData.email, formData.password, 'member');
+            await register(formData.name, formData.email, formData.password, 'member', teamId || undefined);
         } catch (err: any) {
             setError(err.message || 'Something went wrong');
         } finally {

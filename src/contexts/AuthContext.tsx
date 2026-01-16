@@ -14,7 +14,7 @@ type AuthContextType = {
     user: User | null;
     loading: boolean;
     login: (email: string, password: string) => Promise<void>;
-    register: (name: string, email: string, password: string, role: 'trainer' | 'member') => Promise<void>;
+    register: (name: string, email: string, password: string, role: 'trainer' | 'member', teamId?: string) => Promise<void>;
     logout: () => Promise<void>;
 };
 
@@ -60,7 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         router.push('/dashboard');
     };
 
-    const register = async (name: string, email: string, password: string, role: 'trainer' | 'member') => {
+    const register = async (name: string, email: string, password: string, role: 'trainer' | 'member', teamId?: string) => {
         const res = await fetch('/api/auth/register', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -74,7 +74,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         const data = await res.json();
         setUser(data.user);
-        router.push('/auth/role-select');
+
+        // If registering from team invite, redirect back to invite page
+        if (teamId) {
+            router.push(`/teams/invite/${teamId}`);
+        } else {
+            router.push('/auth/role-select');
+        }
     };
 
     const logout = async () => {
