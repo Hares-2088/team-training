@@ -121,6 +121,21 @@ export default function Dashboard() {
                                     </Link>
                                 </CardContent>
                             </Card>
+
+                            <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow cursor-pointer">
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2">
+                                        <span className="text-2xl">👥</span>
+                                        <span className="inline-block">My Team</span>
+                                    </CardTitle>
+                                    <CardDescription>View your team and team members</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <Link href="/teams">
+                                        <Button className="w-full">View Team</Button>
+                                    </Link>
+                                </CardContent>
+                            </Card>
                         </>
                     )}
                 </div>
