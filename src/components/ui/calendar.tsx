@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 
-type CalendarProps = React.HTMLAttributes<HTMLDivElement> & {
+type CalendarProps = Omit<React.HTMLAttributes<HTMLDivElement>, 'onChange'> & {
     value?: string
     onChange?: (date: string) => void
 }
