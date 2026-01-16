@@ -12,7 +12,7 @@ interface CreateTeamFormProps {
     isLoading?: boolean;
 }
 
-export function CreateTeamForm({ userId, onSubmit, isLoading = false }: CreateTeamFormProps) {
+export function CreateTeamForm({ userId, onSubmit, isLoading = false }: Readonly<CreateTeamFormProps>) {
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
 

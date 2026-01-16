@@ -4,37 +4,56 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useState } from 'react';
+import { NumberInput } from '@/components/ui/number-input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useState, useEffect } from 'react';
 
 interface Exercise {
     name: string;
     sets: number;
     reps: string;
+    restTime: number;
     notes: string;
 }
 
 interface CreateTrainingFormProps {
-    teamId: string;
+    defaultTeamId?: string;
     onSubmit: (data: {
         title: string;
         description: string;
         scheduledDate: string;
         exercises: Exercise[];
+        teamId: string;
     }) => void;
     isLoading?: boolean;
 }
 
 export function CreateTrainingForm({
-    teamId,
+    defaultTeamId = '',
     onSubmit,
     isLoading = false,
-}: CreateTrainingFormProps) {
+}: Readonly<CreateTrainingFormProps>) {
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [scheduledDate, setScheduledDate] = useState('');
+    const [teamId, setTeamId] = useState(defaultTeamId);
     const [exercises, setExercises] = useState<Exercise[]>([
-        { name: '', sets: 3, reps: '10', notes: '' },
+        { name: '', sets: 3, reps: '10', restTime: 90, notes: '' },
     ]);
+    const [teams, setTeams] = useState<Array<{ _id: string; name: string }>>([]);
+
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const res = await fetch('/api/teams');
+                const teamsData = await res.json();
+                setTeams(teamsData);
+            } catch (error) {
+                console.error('Error fetching teams:', error);
+            }
+        };
+        fetchData();
+    }, []);
 
     const handleExerciseChange = (index: number, field: keyof Exercise, value: any) => {
         const newExercises = [...exercises];
@@ -43,7 +62,7 @@ export function CreateTrainingForm({
     };
 
     const addExercise = () => {
-        setExercises([...exercises, { name: '', sets: 3, reps: '10', notes: '' }]);
+        setExercises([...exercises, { name: '', sets: 3, reps: '10', restTime: 90, notes: '' }]);
     };
 
     const removeExercise = (index: number) => {
@@ -52,7 +71,7 @@ export function CreateTrainingForm({
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        onSubmit({ title, description, scheduledDate, exercises });
+        onSubmit({ title, description, scheduledDate, exercises, teamId });
     };
 
     return (
@@ -73,6 +92,22 @@ export function CreateTrainingForm({
                             required
                             className="mt-2"
                         />
+                    </div>
+
+                    <div>
+                        <Label htmlFor="teamId">Team</Label>
+                        <Select value={teamId} onValueChange={setTeamId} required>
+                            <SelectTrigger className="mt-2 w-full">
+                                <SelectValue placeholder="Select a team" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {teams.map((team) => (
+                                    <SelectItem key={team._id} value={team._id}>
+                                        {team.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
 
                     <div>
@@ -99,16 +134,11 @@ export function CreateTrainingForm({
                     </div>
 
                     <div className="border-t pt-6">
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="font-semibold">Exercises</h3>
-                            <Button type="button" variant="outline" onClick={addExercise} size="sm">
-                                + Add Exercise
-                            </Button>
-                        </div>
+                        <h3 className="font-semibold mb-4">Exercises</h3>
 
                         <div className="space-y-4">
                             {exercises.map((ex, index) => (
-                                <div key={index} className="p-4 border rounded-lg space-y-3">
+                                <div key={`exercise-${index}`} className="p-4 border rounded-lg space-y-3">
                                     <div className="grid grid-cols-2 gap-3">
                                         <div>
                                             <Label htmlFor={`ex-name-${index}`} className="text-xs">
@@ -127,14 +157,11 @@ export function CreateTrainingForm({
                                             <Label htmlFor={`ex-sets-${index}`} className="text-xs">
                                                 Sets
                                             </Label>
-                                            <Input
+                                            <NumberInput
                                                 id={`ex-sets-${index}`}
-                                                type="number"
                                                 value={ex.sets}
-                                                onChange={(e) =>
-                                                    handleExerciseChange(index, 'sets', parseInt(e.target.value) || 1)
-                                                }
-                                                min="1"
+                                                onChange={(value) => handleExerciseChange(index, 'sets', value)}
+                                                min={1}
                                                 className="mt-1"
                                             />
                                         </div>
@@ -154,17 +181,31 @@ export function CreateTrainingForm({
                                             />
                                         </div>
                                         <div>
-                                            <Label htmlFor={`ex-notes-${index}`} className="text-xs">
-                                                Notes
+                                            <Label htmlFor={`ex-rest-${index}`} className="text-xs">
+                                                Rest Time (seconds)
                                             </Label>
-                                            <Input
-                                                id={`ex-notes-${index}`}
-                                                placeholder="Optional notes"
-                                                value={ex.notes}
-                                                onChange={(e) => handleExerciseChange(index, 'notes', e.target.value)}
+                                            <NumberInput
+                                                id={`ex-rest-${index}`}
+                                                value={ex.restTime}
+                                                onChange={(value) => handleExerciseChange(index, 'restTime', value)}
+                                                min={0}
+                                                step={5}
                                                 className="mt-1"
                                             />
                                         </div>
+                                    </div>
+
+                                    <div>
+                                        <Label htmlFor={`ex-notes-${index}`} className="text-xs">
+                                            Notes
+                                        </Label>
+                                        <Input
+                                            id={`ex-notes-${index}`}
+                                            placeholder="Optional notes"
+                                            value={ex.notes}
+                                            onChange={(e) => handleExerciseChange(index, 'notes', e.target.value)}
+                                            className="mt-1"
+                                        />
                                     </div>
 
                                     {exercises.length > 1 && (
@@ -181,6 +222,10 @@ export function CreateTrainingForm({
                                 </div>
                             ))}
                         </div>
+
+                        <Button type="button" variant="outline" onClick={addExercise} className="w-full mt-4">
+                            + Add Exercise
+                        </Button>
                     </div>
 
                     <Button type="submit" className="w-full" disabled={isLoading} size="lg">

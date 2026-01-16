@@ -1,5 +1,17 @@
 import mongoose from 'mongoose';
 
+const exerciseSchema = new mongoose.Schema(
+    {
+        exerciseName: { type: String, required: true },
+        setNumber: { type: Number, required: true },
+        weight: { type: Number, required: true },
+        reps: { type: Number, required: true },
+        rpe: { type: Number },
+        notes: { type: String },
+    },
+    { _id: false }
+);
+
 const workoutLogSchema = new mongoose.Schema(
     {
         training: {
@@ -12,15 +24,16 @@ const workoutLogSchema = new mongoose.Schema(
             ref: 'User',
             required: true,
         },
-        exercises: [
-            {
-                exerciseName: String,
-                setNumber: Number,
-                weight: Number,
-                reps: Number,
-                notes: String,
-            },
-        ],
+        exercises: [exerciseSchema],
+        startTime: {
+            type: Date,
+        },
+        endTime: {
+            type: Date,
+        },
+        duration: {
+            type: Number,
+        },
         completedAt: {
             type: Date,
             default: Date.now,

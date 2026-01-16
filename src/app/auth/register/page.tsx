@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,16 +14,16 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function Register() {
-    const router = useRouter();
+    const { register } = useAuth();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [formData, setFormData] = useState({
         name: '',
         email: '',
         password: '',
-        role: 'member' as 'trainer' | 'member',
     });
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -38,17 +37,7 @@ export default function Register() {
         setError('');
 
         try {
-            const response = await fetch('/api/auth/register', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData),
-            });
-
-            if (!response.ok) {
-                throw new Error('Registration failed');
-            }
-
-            router.push('/dashboard');
+            await register(formData.name, formData.email, formData.password, 'member');
         } catch (err: any) {
             setError(err.message || 'Something went wrong');
         } finally {
@@ -112,21 +101,6 @@ export default function Register() {
                             />
                         </div>
 
-                        <div>
-                            <Label htmlFor="role">I am a...</Label>
-                            <Select value={formData.role} onValueChange={(value: any) =>
-                                setFormData(prev => ({ ...prev, role: value }))
-                            }>
-                                <SelectTrigger className="mt-2">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="trainer">Trainer</SelectItem>
-                                    <SelectItem value="member">Team Member</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-
                         <Button type="submit" className="w-full" disabled={loading} size="lg">
                             {loading ? 'Creating Account...' : 'Create Account'}
                         </Button>
@@ -134,7 +108,7 @@ export default function Register() {
 
                     <p className="text-center text-sm text-gray-600 mt-4">
                         Already have an account?{' '}
-                        <Link href="/auth/login" className="text-indigo-600 hover:underline font-medium">
+                        <Link href="/auth/login" className="text-indigo-600 hover:text-indigo-700 transition-colors font-medium">
                             Sign in
                         </Link>
                     </p>

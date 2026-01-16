@@ -20,6 +20,11 @@ const teamSchema = new mongoose.Schema(
                 ref: 'User',
             },
         ],
+        inviteCode: {
+            type: String,
+            unique: true,
+            sparse: true,
+        },
     },
     {
         timestamps: true,

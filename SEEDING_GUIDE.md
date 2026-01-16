@@ -25,7 +25,7 @@ sudo systemctl start mongod
 2. Create a cluster and get connection string
 3. Update `.env.local`:
    ```
-   MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/team-training
+   MONGODB_URI=mongodb+srv://username:jlJlWZP74yCBzNMG@cluster.mongodb.net/team-training
    ```
 
 ---

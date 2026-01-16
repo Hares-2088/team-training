@@ -11,6 +11,7 @@ interface TrainingCardProps {
     date: string;
     exerciseCount: number;
     status: 'scheduled' | 'completed' | 'cancelled';
+    userCompleted?: boolean; // User-specific completion status
     onDelete?: () => void;
     onEdit?: () => void;
     isTrainer?: boolean;
@@ -23,14 +24,18 @@ export function TrainingCard({
     date,
     exerciseCount,
     status,
+    userCompleted = false,
     onDelete,
     onEdit,
     isTrainer = false,
-}: TrainingCardProps) {
+}: Readonly<TrainingCardProps>) {
+    // Use userCompleted for display status if provided
+    const displayStatus = userCompleted ? 'completed' : 'scheduled';
+
     const statusColors = {
-        scheduled: 'bg-blue-100 text-blue-800',
-        completed: 'bg-green-100 text-green-800',
-        cancelled: 'bg-red-100 text-red-800',
+        scheduled: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+        completed: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+        cancelled: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
     };
 
     return (
@@ -41,8 +46,8 @@ export function TrainingCard({
                         <CardTitle className="text-lg">{title}</CardTitle>
                         <CardDescription>{description}</CardDescription>
                     </div>
-                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${statusColors[status]}`}>
-                        {status.charAt(0).toUpperCase() + status.slice(1)}
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${statusColors[displayStatus]}`}>
+                        {displayStatus.charAt(0).toUpperCase() + displayStatus.slice(1)}
                     </span>
                 </div>
             </CardHeader>
@@ -58,6 +63,11 @@ export function TrainingCard({
                                 View Details
                             </Button>
                         </Link>
+                        {!userCompleted && !isTrainer && (
+                            <Link href={`/dashboard/log-workout/${id}`}>
+                                <Button variant="outline">Log Workout</Button>
+                            </Link>
+                        )}
                         {isTrainer && (
                             <>
                                 <Button onClick={onEdit} variant="outline">

@@ -1,16 +1,16 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function Login() {
-    const router = useRouter();
+    const { login } = useAuth();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [formData, setFormData] = useState({
@@ -29,17 +29,7 @@ export default function Login() {
         setError('');
 
         try {
-            const response = await fetch('/api/auth/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData),
-            });
-
-            if (!response.ok) {
-                throw new Error('Login failed');
-            }
-
-            router.push('/dashboard');
+            await login(formData.email, formData.password);
         } catch (err: any) {
             setError(err.message || 'Invalid credentials');
         } finally {
@@ -97,7 +87,7 @@ export default function Login() {
 
                     <p className="text-center text-sm text-gray-600 mt-4">
                         Don't have an account?{' '}
-                        <Link href="/auth/register" className="text-indigo-600 hover:underline font-medium">
+                        <Link href="/auth/register" className="text-indigo-600 hover:text-indigo-700 transition-colors font-medium">
                             Sign up
                         </Link>
                     </p>

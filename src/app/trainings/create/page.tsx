@@ -3,63 +3,71 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CreateTrainingForm } from '@/components/CreateTrainingForm';
+import { Navbar } from '@/components/Navbar';
 
 export default function CreateTrainingPage() {
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const handleSubmit = async (data: any) => {
         setIsLoading(true);
+        setError(null);
         try {
-            // Replace with actual API call
-            console.log('Creating training:', data);
-            // const response = await fetch('/api/trainings', {
-            //   method: 'POST',
-            //   headers: { 'Content-Type': 'application/json' },
-            //   body: JSON.stringify(data),
-            // });
+            if (!data.teamId) {
+                throw new Error('Team is required');
+            }
 
-            // if (!response.ok) throw new Error('Failed to create training');
+            const response = await fetch('/api/trainings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title: data.title,
+                    description: data.description,
+                    scheduledDate: data.scheduledDate,
+                    exercises: data.exercises,
+                    team: data.teamId,
+                }),
+            });
+
+            if (!response.ok) {
+                const payload = await response.json();
+                throw new Error(payload.error || 'Failed to create training');
+            }
 
             router.push('/trainings');
         } catch (error) {
-            console.error('Error:', error);
+            const message = error instanceof Error ? error.message : 'Failed to create training';
+            console.error('Error:', message);
+            setError(message);
         } finally {
             setIsLoading(false);
         }
     };
 
     return (
-        <div className="min-h-screen bg-gray-50">
-            {/* Navigation Header */}
-            <nav className="border-b bg-white sticky top-0 z-50">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-                    <div className="flex justify-between items-center">
-                        <h1 className="text-2xl font-bold text-indigo-600">💪 TeamTrainer</h1>
-                        <div className="flex gap-4">
-                            <Link href="/dashboard">
-                                <Button variant="ghost">Dashboard</Button>
-                            </Link>
-                            <Link href="/trainings">
-                                <Button variant="ghost">Trainings</Button>
-                            </Link>
-                            <Button variant="outline">Logout</Button>
-                        </div>
-                    </div>
-                </div>
-            </nav>
+        <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-50">
+            <Navbar currentPage="workouts" />
 
             {/* Main Content */}
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
                 <div className="max-w-2xl mx-auto">
-                    <Link href="/trainings" className="text-indigo-600 hover:underline text-sm mb-4 inline-block">
-                        ← Back to Trainings
-                    </Link>
+                    <button onClick={() => router.push('/dashboard')} className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-all text-sm mb-4 inline-flex items-center gap-1 hover:-translate-x-0.5">
+                        <ChevronLeft className="w-4 h-4 transition-transform" />
+                        Back to Dashboard
+                    </button>
+
+                    {error && (
+                        <div className="mb-4 rounded-md border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 px-4 py-3 text-sm text-red-700 dark:text-red-400">
+                            {error}
+                        </div>
+                    )}
 
                     <CreateTrainingForm
-                        teamId="1"
+                        defaultTeamId=""
                         onSubmit={handleSubmit}
                         isLoading={isLoading}
                     />

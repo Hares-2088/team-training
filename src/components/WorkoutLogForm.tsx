@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { NumberInput } from '@/components/ui/number-input';
 import { useState } from 'react';
 
 interface WorkoutExercise {
@@ -26,7 +27,7 @@ export function WorkoutLogForm({
     exercises,
     onSubmit,
     isLoading = false,
-}: WorkoutLogFormProps) {
+}: Readonly<WorkoutLogFormProps>) {
     const [workoutData, setWorkoutData] = useState<WorkoutExercise[]>([]);
     const [notes, setNotes] = useState('');
 
@@ -44,7 +45,7 @@ export function WorkoutLogForm({
     // Initialize workout data structure
     if (workoutData.length === 0 && exercises.length > 0) {
         const initialized = exercises.flatMap((ex) =>
-            Array(ex.sets)
+            new Array(ex.sets)
                 .fill(null)
                 .map((_, setIdx) => ({
                     exerciseName: ex.name,
@@ -79,14 +80,13 @@ export function WorkoutLogForm({
                                         <Label htmlFor={`weight-${index}`} className="text-xs">
                                             Weight (lbs)
                                         </Label>
-                                        <Input
+                                        <NumberInput
                                             id={`weight-${index}`}
-                                            type="number"
+                                            value={item.weight || 0}
+                                            onChange={(value) => handleExerciseChange(index, 'weight', value)}
+                                            min={0}
+                                            step={5}
                                             placeholder="0"
-                                            value={item.weight || ''}
-                                            onChange={(e) =>
-                                                handleExerciseChange(index, 'weight', parseFloat(e.target.value) || 0)
-                                            }
                                             className="mt-1"
                                         />
                                     </div>
@@ -94,14 +94,12 @@ export function WorkoutLogForm({
                                         <Label htmlFor={`reps-${index}`} className="text-xs">
                                             Reps
                                         </Label>
-                                        <Input
+                                        <NumberInput
                                             id={`reps-${index}`}
-                                            type="number"
+                                            value={item.reps || 0}
+                                            onChange={(value) => handleExerciseChange(index, 'reps', value)}
+                                            min={0}
                                             placeholder="0"
-                                            value={item.reps || ''}
-                                            onChange={(e) =>
-                                                handleExerciseChange(index, 'reps', parseInt(e.target.value) || 0)
-                                            }
                                             className="mt-1"
                                         />
                                     </div>

@@ -14,17 +14,13 @@ const trainingSchema = new mongoose.Schema(
                 name: String,
                 sets: Number,
                 reps: String,
+                restTime: { type: Number, default: 90 }, // Rest time in seconds between sets
                 notes: String,
             },
         ],
         team: {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'Team',
-            required: true,
-        },
-        trainer: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'User',
             required: true,
         },
         scheduledDate: {

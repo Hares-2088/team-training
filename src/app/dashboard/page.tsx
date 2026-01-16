@@ -3,37 +3,37 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useState } from 'react';
+import { Navbar } from '@/components/Navbar';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function Dashboard() {
-    const [userRole] = useState<'trainer' | 'member'>('member');
+    const { user, loading } = useAuth();
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-50">
+                <Navbar currentPage="dashboard" />
+                <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+                    <div className="text-center">Loading...</div>
+                </main>
+            </div>
+        );
+    }
+
+    const userRole = user?.role || 'member';
 
     return (
-        <div className="min-h-screen bg-gray-50">
-            {/* Navigation Header */}
-            <nav className="border-b bg-white sticky top-0 z-50">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-                    <div className="flex justify-between items-center">
-                        <h1 className="text-2xl font-bold text-indigo-600">💪 TeamTrainer</h1>
-                        <div className="flex gap-4">
-                            <Link href="/teams">
-                                <Button variant="ghost">Teams</Button>
-                            </Link>
-                            <Link href="/trainings">
-                                <Button variant="ghost">Trainings</Button>
-                            </Link>
-                            <Button variant="outline">Logout</Button>
-                        </div>
-                    </div>
-                </div>
-            </nav>
+        <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-50">
+            <Navbar currentPage="dashboard" />
 
             {/* Main Content */}
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
                 {/* Welcome Section */}
                 <div className="mb-12">
-                    <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome to TeamTrainer</h2>
-                    <p className="text-lg text-gray-600">
+                    <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">
+                        Welcome back, {user?.name || 'User'}!
+                    </h2>
+                    <p className="text-lg text-slate-600 dark:text-slate-400">
                         {userRole === 'trainer'
                             ? 'Create workouts and manage your team'
                             : 'Track your workouts and progress'}
@@ -48,7 +48,7 @@ export default function Dashboard() {
                                 <CardHeader>
                                     <CardTitle className="flex items-center gap-2">
                                         <span className="text-2xl">➕</span>
-                                        Create New Training
+                                        <span className="inline-block">Create New Training</span>
                                     </CardTitle>
                                     <CardDescription>Design a workout for your team</CardDescription>
                                 </CardHeader>
@@ -80,13 +80,13 @@ export default function Dashboard() {
                                 <CardHeader>
                                     <CardTitle className="flex items-center gap-2">
                                         <span className="text-2xl">📋</span>
-                                        Upcoming Workouts
+                                        Workout Plans
                                     </CardTitle>
                                     <CardDescription>View your team's scheduled trainings</CardDescription>
                                 </CardHeader>
                                 <CardContent>
                                     <Link href="/trainings">
-                                        <Button className="w-full">View Trainings</Button>
+                                        <Button className="w-full">View Workout Plans</Button>
                                     </Link>
                                 </CardContent>
                             </Card>
@@ -95,14 +95,14 @@ export default function Dashboard() {
                                 <CardHeader>
                                     <CardTitle className="flex items-center gap-2">
                                         <span className="text-2xl">📊</span>
-                                        Log Workout
+                                        My Workout Stats
                                     </CardTitle>
-                                    <CardDescription>Record your sets, reps, and progress</CardDescription>
+                                    <CardDescription>View your workout history and progress</CardDescription>
                                 </CardHeader>
                                 <CardContent>
-                                    <Button className="w-full" disabled>
-                                        Start Logging
-                                    </Button>
+                                    <Link href="/dashboard/my-trainings" className="block">
+                                        <Button className="w-full">View My Workout Stats</Button>
+                                    </Link>
                                 </CardContent>
                             </Card>
                         </>
@@ -129,28 +129,6 @@ export default function Dashboard() {
                             </div>
                         </CardContent>
                     </Card>
-                </div>
-
-                {/* Getting Started Guide */}
-                <div className="mt-12 bg-blue-50 border border-blue-200 rounded-lg p-6">
-                    <h3 className="font-semibold text-blue-900 mb-4">Getting Started Guide</h3>
-                    <div className="space-y-2 text-blue-800 text-sm">
-                        {userRole === 'trainer' ? (
-                            <>
-                                <p>✅ 1. Create your first training session</p>
-                                <p>✅ 2. Add exercises with sets and reps</p>
-                                <p>✅ 3. Invite team members</p>
-                                <p>✅ 4. Monitor member progress</p>
-                            </>
-                        ) : (
-                            <>
-                                <p>✅ 1. View upcoming trainings from your trainer</p>
-                                <p>✅ 2. Log your weight and reps for each exercise</p>
-                                <p>✅ 3. Add notes about how you felt</p>
-                                <p>✅ 4. Track your progress over time</p>
-                            </>
-                        )}
-                    </div>
                 </div>
             </main>
         </div>
