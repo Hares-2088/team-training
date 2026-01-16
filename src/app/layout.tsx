@@ -16,10 +16,6 @@ const geistMono = Geist_Mono({
 export const metadata = {
   title: 'FiT Team - Fitness Training Platform',
   description: 'Modern fitness training platform for trainers and team members',
-  icons: {
-    icon: '/favicon.svg?v=2',
-    apple: '/favicon.svg?v=2',
-  },
 };
 
 export default function RootLayout({
