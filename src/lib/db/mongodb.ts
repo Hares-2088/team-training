@@ -1,5 +1,11 @@
 import mongoose from 'mongoose';
 
+// Import all models to ensure they're registered
+import '@/models/User';
+import '@/models/Team';
+import '@/models/Training';
+import '@/models/WorkoutLog';
+
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/team-training';
 
 if (!MONGODB_URI) {

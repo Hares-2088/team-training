@@ -1,6 +1,3 @@
-'use client';
-
-import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
@@ -16,40 +13,24 @@ const geistMono = Geist_Mono({
   subsets: ['latin'],
 });
 
+export const metadata = {
+  title: 'FiT Team - Fitness Training Platform',
+  description: 'Modern fitness training platform for trainers and team members',
+  icons: {
+    icon: '/favicon.svg?v=2',
+    apple: '/favicon.svg?v=2',
+  },
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: ReactNode;
 }>) {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-    const savedTheme = localStorage.getItem('theme');
-    const prefersDark = globalThis.matchMedia('(prefers-color-scheme: dark)').matches;
-    const isDark = savedTheme === 'dark' || (!savedTheme && prefersDark);
-
-    if (isDark) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, []);
-
-  if (!mounted) {
-    return (
-      <html lang="en" suppressHydrationWarning>
-        <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-white`}>
-          <AuthProvider>{children}</AuthProvider>
-        </body>
-      </html>
-    );
-  }
-
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-50 transition-colors duration-200`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-white dark:bg-slate-950`}
       >
         <AuthProvider>{children}</AuthProvider>
       </body>
