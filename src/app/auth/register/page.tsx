@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -19,7 +19,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 export const dynamic = 'force-dynamic';
 
-export default function Register() {
+function RegisterContent() {
     const { register } = useAuth();
     const searchParams = useSearchParams();
     const teamId = searchParams.get('team');
@@ -120,5 +120,19 @@ export default function Register() {
                 </CardContent>
             </Card>
         </div>
+    );
+}
+
+export default function Register() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center px-4">
+                <Card className="w-full max-w-md">
+                    <CardContent className="py-12 text-center">Loading...</CardContent>
+                </Card>
+            </div>
+        }>
+            <RegisterContent />
+        </Suspense>
     );
 }
