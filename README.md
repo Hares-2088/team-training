@@ -45,7 +45,10 @@ A modern, beautiful, and intuitive platform for trainers to create workouts and 
 - Real-time feedback and validation
 - Personalized dashboard with user greeting
 - Role-specific navigation (My Team for members)
-- Seamless invite link flow with auto-join
+- Seamless invite link flow - new users auto-register as members and auto-join team
+- Global logout button accessible on all pages via Navbar
+- Accurate member count display on team listings
+- Cleaned up UI (removed non-functional edit buttons)
 
 ## Tech Stack
 
@@ -272,7 +275,7 @@ src/
 2. Click "Add Member" button
 3. Choose:
    - **Option 1:** Generate & copy invite code (member enters code on role selection)
-   - **Option 2:** Copy shareable link (new users register then auto-join; existing users auto-join)
+   - **Option 2:** Copy shareable link (new users auto-register as members and auto-join; existing users auto-join with redirect to dashboard)
 
 ### Member Logging Workout
 1. Go to "Workout Plans" (navbar)
@@ -313,7 +316,7 @@ Uses shadcn/ui for professional, accessible components:
   - Role-based UI (different buttons/actions per role)
   - Protected API routes with ownership validation
 ✅ Invite code system (generate, validate, join)
-✅ Shareable invite links with auto-join
+✅ Shareable invite links with seamless auto-registration and auto-join
 ✅ Team management (create, edit, delete - trainer only)
 ✅ Add/remove team members (trainer only)
 ✅ Training creation with exercise details
@@ -329,6 +332,9 @@ Uses shadcn/ui for professional, accessible components:
 ✅ Workout Plans accessible from navbar
 ✅ Trainer redirect prevention from logging pages
 ✅ Member redirect from teams list to team details
+✅ Logout button in global navigation bar
+✅ Accurate member counts on team listing pages
+✅ Duplicate member prevention with frontend filtering
 
 ## Next Steps (Future Enhancements)
 
