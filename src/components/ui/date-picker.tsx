@@ -5,7 +5,7 @@ import { Calendar as CalendarIcon } from "lucide-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
 
-interface DatePickerProps extends React.InputHTMLAttributes<HTMLInputElement> {
+interface DatePickerProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'value'> {
     value?: string
     onChange?: (value: string) => void
 }
