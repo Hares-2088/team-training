@@ -4,7 +4,7 @@ import Team from '@/models/Team';
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken } from '@/lib/auth';
 
-const REQUIRED_FIELDS = ['title', 'team', 'trainer', 'scheduledDate'] as const;
+const REQUIRED_FIELDS = ['title', 'team', 'scheduledDate'] as const;
 
 export async function GET(request: NextRequest) {
     try {
@@ -87,7 +87,6 @@ export async function POST(request: NextRequest) {
             description: body.description,
             exercises: body.exercises || [],
             team: body.team,
-            trainer: decoded.userId,
             scheduledDate: new Date(body.scheduledDate),
             status: body.status || 'scheduled',
         });

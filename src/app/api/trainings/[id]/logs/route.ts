@@ -31,15 +31,9 @@ export async function POST(
             return NextResponse.json({ error: 'Training not found' }, { status: 404 });
         }
 
-        // Check if user is a member of the training's team
-        const team = await Team.findById(training.team);
-        if (!team) {
-            return NextResponse.json({ error: 'Team not found' }, { status: 404 });
-        }
-
-        const isMember = team.members.some((memberId: any) => memberId.toString() === currentUser.userId);
-        if (!isMember) {
-            return NextResponse.json({ error: 'Only team members can log workouts' }, { status: 403 });
+        // Trainers should not log workouts
+        if (currentUser.role === 'trainer') {
+            return NextResponse.json({ error: 'Trainers cannot log workouts' }, { status: 403 });
         }
 
         const workoutLog = await WorkoutLog.create({

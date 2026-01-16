@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Navbar } from '@/components/Navbar';
+import { ActivityChart } from '@/components/ActivityChart';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function Dashboard() {
@@ -115,18 +116,13 @@ export default function Dashboard() {
                         <CardHeader>
                             <CardTitle>Recent Activity</CardTitle>
                             <CardDescription>
-                                {userRole === 'trainer' ? "Your team's latest logs" : 'Your recent workouts'}
+                                {userRole === 'trainer'
+                                    ? "Your team's training activity by day"
+                                    : 'Your workout logging activity by day'}
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-center text-gray-500 py-12">
-                                <p>No activity yet</p>
-                                <p className="text-sm mt-2">
-                                    {userRole === 'trainer'
-                                        ? 'Create a training to get started'
-                                        : 'Log your first workout'}
-                                </p>
-                            </div>
+                            <ActivityChart isTrainer={userRole === 'trainer'} />
                         </CardContent>
                     </Card>
                 </div>

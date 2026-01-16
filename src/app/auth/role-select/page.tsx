@@ -29,6 +29,18 @@ export default function RoleSelectPage() {
         setIsLoading(true);
         setError(null);
         try {
+            // Update user role to trainer
+            const roleResponse = await fetch('/api/users', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ role: 'trainer' }),
+            });
+
+            if (!roleResponse.ok) {
+                const payload = await roleResponse.json();
+                throw new Error(payload.error || 'Failed to update role');
+            }
+
             // Create a new team for the trainer
             const response = await fetch('/api/teams', {
                 method: 'POST',
@@ -44,8 +56,8 @@ export default function RoleSelectPage() {
                 throw new Error(payload.error || 'Failed to create team');
             }
 
-            // Redirect to dashboard
-            router.push('/dashboard');
+            // Force reload to pick up new JWT token with trainer role
+            window.location.href = '/dashboard';
         } catch (err) {
             const message = err instanceof Error ? err.message : 'Failed to create team';
             setError(message);

@@ -37,8 +37,8 @@ export default function TrainingsPage() {
             try {
                 // Fetch both trainings and user's workout logs
                 const [trainingsRes, workoutLogsRes] = await Promise.all([
-                    fetch('/api/trainings'),
-                    fetch('/api/workout-logs'),
+                    fetch('/api/trainings', { credentials: 'include' }),
+                    fetch('/api/workout-logs', { credentials: 'include' }),
                 ]);
 
                 if (!trainingsRes.ok) {

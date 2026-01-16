@@ -79,7 +79,7 @@ export default function LogWorkoutPage() {
     useEffect(() => {
         const fetchTraining = async () => {
             try {
-                const res = await fetch(`/api/trainings/${trainingId}`);
+                const res = await fetch(`/api/trainings/${trainingId}`, { credentials: 'include' });
                 if (!res.ok) {
                     const payload = await res.json();
                     throw new Error(payload.error || 'Failed to load training');
@@ -170,6 +170,7 @@ export default function LogWorkoutPage() {
             const res = await fetch(`/api/trainings/${trainingId}/logs`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify({
                     exercises: flattenedExercises,
                     startTime: workoutStartTime,
@@ -180,6 +181,7 @@ export default function LogWorkoutPage() {
 
             if (!res.ok) {
                 const payload = await res.json();
+                alert(`Failed to save workout: ${payload.error || 'Unknown error'}`);
                 throw new Error(payload.error || 'Failed to save workout');
             }
         } catch (err) {

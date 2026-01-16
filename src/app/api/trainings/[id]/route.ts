@@ -29,25 +29,25 @@ export async function GET(
             return NextResponse.json({ error: 'Training ID is required' }, { status: 400 });
         }
 
-        // Ensure Team model is registered
-        Team.modelName;
-
-        const training = await Training.findById(id).populate('team', 'name');
+        const training = await Training.findById(id);
 
         if (!training) {
             return NextResponse.json({ error: 'Training not found' }, { status: 404 });
         }
 
-        // Check if user has access to this training's team
-        const userTeams = await Team.find({
-            $or: [
-                { trainer: decoded.userId },
-                { members: decoded.userId }
-            ]
-        });
+        // Directly check team membership to avoid false 403s
+        const team = await Team.findById(training.team)
+            .populate('members', '_id')
+            .select('trainer members');
 
-        const hasAccess = userTeams.some((team) => team._id.toString() === training.team?.toString());
-        if (!hasAccess) {
+        if (!team) {
+            return NextResponse.json({ error: 'Team not found' }, { status: 404 });
+        }
+
+        const isTrainer = String(team.trainer) === String(decoded.userId);
+        const isMember = team.members.some((member: any) => String(member?._id ?? member) === String(decoded.userId));
+
+        if (!isTrainer && !isMember) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
         }
 
