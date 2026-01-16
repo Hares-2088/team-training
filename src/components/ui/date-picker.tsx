@@ -39,8 +39,10 @@ const DatePicker = React.forwardRef<HTMLInputElement, DatePickerProps>(
                 <PopoverContent className="w-auto p-0" align="start">
                     <Calendar
                         value={value}
-                        onChange={(date) => {
-                            onChange?.(date)
+                        onChange={(date: string) => {
+                            if (typeof date === 'string') {
+                                onChange?.(date)
+                            }
                             setOpen(false)
                         }}
                     />
