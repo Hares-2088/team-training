@@ -204,7 +204,7 @@ export default function TrainingDetailPage() {
                         </div>
 
                         {/* Action Buttons */}
-                        {user?.role === 'trainer' && (
+                        {(user?.role === 'trainer' || user?.role === 'coach') && (
                             <div className="flex gap-3">
                                 <Link href={`/trainings/${id}/edit`} className="flex-1">
                                     <Button className="btn-primary w-full">

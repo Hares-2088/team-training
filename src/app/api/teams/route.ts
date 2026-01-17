@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
             ]
         })
             .populate('trainer', 'name email')
-            .populate('members', 'name email')
+            .populate('members', 'name email role')
             .sort({ name: 1 });
 
         return NextResponse.json(teams);

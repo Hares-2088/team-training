@@ -31,7 +31,7 @@ export async function PATCH(request: NextRequest) {
 
         const { role } = await request.json();
 
-        if (!role || !['trainer', 'member'].includes(role)) {
+        if (!role || !['trainer', 'member', 'coach'].includes(role)) {
             return NextResponse.json({ error: 'Invalid role' }, { status: 400 });
         }
 

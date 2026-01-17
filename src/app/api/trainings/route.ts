@@ -1,6 +1,7 @@
 import { connectDB } from '@/lib/db/mongodb';
 import Training from '@/models/Training';
 import Team from '@/models/Team';
+import User from '@/models/User';
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken } from '@/lib/auth';
 
@@ -72,14 +73,17 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        // Verify user is the trainer of the team
-        const team = await Team.findById(body.team);
+        // Verify permissions: trainer of team OR coach and member of team
+        const team = await Team.findById(body.team).populate('members', '_id');
         if (!team) {
             return NextResponse.json({ error: 'Team not found' }, { status: 404 });
         }
 
-        if (team.trainer.toString() !== decoded.userId) {
-            return NextResponse.json({ error: 'Unauthorized - only team trainer can create trainings' }, { status: 403 });
+        const isTrainer = team.trainer.toString() === decoded.userId;
+        const requester = await User.findById(decoded.userId).select('role');
+        const isCoachMember = requester?.role === 'coach' && team.members.some((m: any) => String(m?._id ?? m) === decoded.userId);
+        if (!isTrainer && !isCoachMember) {
+            return NextResponse.json({ error: 'Unauthorized - only team trainer or coach can create trainings' }, { status: 403 });
         }
 
         const training = await Training.create({

@@ -7,14 +7,14 @@ type User = {
     _id: string;
     name: string;
     email: string;
-    role: 'trainer' | 'member';
+    role: 'trainer' | 'member' | 'coach';
 };
 
 type AuthContextType = {
     user: User | null;
     loading: boolean;
     login: (email: string, password: string) => Promise<void>;
-    register: (name: string, email: string, password: string, role: 'trainer' | 'member', teamId?: string) => Promise<void>;
+    register: (name: string, email: string, password: string, role: 'trainer' | 'member' | 'coach', teamId?: string) => Promise<void>;
     logout: () => Promise<void>;
 };
 
@@ -66,7 +66,7 @@ export function AuthProvider({ children }: { readonly children: ReactNode }) {
         router.push('/dashboard');
     }, [router]);
 
-    const register = useCallback(async (name: string, email: string, password: string, role: 'trainer' | 'member', teamId?: string) => {
+    const register = useCallback(async (name: string, email: string, password: string, role: 'trainer' | 'member' | 'coach', teamId?: string) => {
         const res = await fetch('/api/auth/register', {
             method: 'POST',
             credentials: 'include',

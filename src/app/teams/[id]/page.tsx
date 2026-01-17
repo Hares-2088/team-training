@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Navbar } from '@/components/Navbar';
-import { ChevronLeft, Edit, Trash2, Users, Mail, UserPlus, Eye } from 'lucide-react';
+import { ChevronLeft, Edit, Trash2, Users, Mail, UserPlus, Eye, Award, User as UserIcon } from 'lucide-react';
 import { AddMemberModal } from '@/components/AddMemberModal';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -26,6 +26,7 @@ type Team = {
         _id: string;
         name: string;
         email: string;
+        role?: 'member' | 'coach' | 'trainer';
     }>;
 };
 
@@ -43,6 +44,7 @@ export default function TeamDetailPage() {
     const [showAddMemberModal, setShowAddMemberModal] = useState(false);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [showRemoveMemberDialog, setShowRemoveMemberDialog] = useState<{ isOpen: boolean; memberId: string; memberName: string }>({ isOpen: false, memberId: '', memberName: '' });
+    const [roleUpdatingId, setRoleUpdatingId] = useState<string | null>(null);
 
     useEffect(() => {
         const fetchTeam = async () => {
@@ -108,6 +110,28 @@ export default function TeamDetailPage() {
             alert(err instanceof Error ? err.message : 'Failed to remove member');
         } finally {
             setRemovingMemberId(null);
+        }
+    };
+
+    const handleSetRole = async (memberId: string, nextRole: 'member' | 'coach') => {
+        setRoleUpdatingId(memberId);
+        try {
+            const res = await fetch(`/api/teams/${id}/members/${memberId}`, {
+                method: 'PATCH',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ role: nextRole }),
+            });
+            if (!res.ok) {
+                const payload = await res.json();
+                throw new Error(payload.error || 'Failed to update role');
+            }
+            const data = await res.json();
+            setTeam(data.team);
+        } catch (err) {
+            alert(err instanceof Error ? err.message : 'Failed to update role');
+        } finally {
+            setRoleUpdatingId(null);
         }
     };
 
@@ -232,7 +256,17 @@ export default function TeamDetailPage() {
                                     <CardContent className="pt-6">
                                         <div className="flex items-center justify-between">
                                             <div>
-                                                <p className="font-semibold text-slate-900 dark:text-white">{member.name}</p>
+                                                <div className="flex items-center gap-2">
+                                                    <p className="font-semibold text-slate-900 dark:text-white">{member.name}</p>
+                                                    <span className="inline-flex items-center gap-1 text-xs text-slate-600 dark:text-slate-400">
+                                                        {member.role === 'coach' ? (
+                                                            <Award className="w-3.5 h-3.5 text-amber-500" />
+                                                        ) : (
+                                                            <UserIcon className="w-3.5 h-3.5" />
+                                                        )}
+                                                        {member.role === 'coach' ? 'Coach' : 'Member'}
+                                                    </span>
+                                                </div>
                                                 <p className="text-sm text-slate-600 dark:text-slate-400 flex items-center gap-1 mt-1">
                                                     <Mail className="w-3 h-3" />
                                                     {member.email}
@@ -250,6 +284,25 @@ export default function TeamDetailPage() {
                                                             <Eye className="w-4 h-4" />
                                                             View Logs
                                                         </Button>
+                                                        {member.role === 'coach' ? (
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                onClick={() => handleSetRole(member._id, 'member')}
+                                                                disabled={roleUpdatingId === member._id}
+                                                            >
+                                                                Demote to Member
+                                                            </Button>
+                                                        ) : (
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                onClick={() => handleSetRole(member._id, 'coach')}
+                                                                disabled={roleUpdatingId === member._id}
+                                                            >
+                                                                Promote to Coach
+                                                            </Button>
+                                                        )}
                                                         <Button
                                                             variant="destructive"
                                                             size="sm"

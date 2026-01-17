@@ -14,7 +14,7 @@ interface TrainingCardProps {
     userCompleted?: boolean; // User-specific completion status
     onDelete?: () => void;
     onEdit?: () => void;
-    isTrainer?: boolean;
+    canManageTrainings?: boolean;
 }
 
 export function TrainingCard({
@@ -27,7 +27,7 @@ export function TrainingCard({
     userCompleted = false,
     onDelete,
     onEdit,
-    isTrainer = false,
+    canManageTrainings = false,
 }: Readonly<TrainingCardProps>) {
     // Use userCompleted for display status if provided
     const displayStatus = userCompleted ? 'completed' : 'scheduled';
@@ -63,12 +63,12 @@ export function TrainingCard({
                                 View Details
                             </Button>
                         </Link>
-                        {!userCompleted && !isTrainer && (
+                        {!userCompleted && (
                             <Link href={`/dashboard/log-workout/${id}`}>
                                 <Button variant="outline">Log Workout</Button>
                             </Link>
                         )}
-                        {isTrainer && (
+                        {canManageTrainings && (
                             <>
                                 <Button onClick={onEdit} variant="outline">
                                     Edit

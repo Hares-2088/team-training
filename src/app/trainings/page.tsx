@@ -136,7 +136,7 @@ export default function TrainingsPage() {
                         <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Workout Plans</h2>
                         <p className="text-slate-600 dark:text-slate-400 mt-1">View and manage your team workouts</p>
                     </div>
-                    {user?.role === 'trainer' && (
+                    {(user?.role === 'trainer' || user?.role === 'coach') && (
                         <Link href="/trainings/create">
                             <Button size="lg">Create Training</Button>
                         </Link>
@@ -191,7 +191,7 @@ export default function TrainingsPage() {
                                     exerciseCount={training.exercises?.length || 0}
                                     status={training.status}
                                     userCompleted={training.userCompleted}
-                                    isTrainer={user?.role === 'trainer'}
+                                    canManageTrainings={user?.role === 'trainer' || user?.role === 'coach'}
                                     onEdit={() => handleEdit(training._id)}
                                     onDelete={() => handleDeleteClick(training._id, training.title)}
                                 />
@@ -209,9 +209,11 @@ export default function TrainingsPage() {
                             <CardContent className="py-12 text-center">
                                 <p className="text-gray-500 text-lg">No trainings yet</p>
                                 <p className="text-gray-400 mt-2">Create your first training to get started</p>
-                                <Link href="/trainings/create" className="mt-4 inline-block">
-                                    <Button>Create Your First Training</Button>
-                                </Link>
+                                {(user?.role === 'trainer' || user?.role === 'coach') && (
+                                    <Link href="/trainings/create" className="mt-4 inline-block">
+                                        <Button>Create Your First Training</Button>
+                                    </Link>
+                                )}
                             </CardContent>
                         </Card>
                     )}

@@ -30,7 +30,7 @@ export async function GET(
 
         const team = await Team.findById(id)
             .populate('trainer', 'name email')
-            .populate('members', 'name email');
+            .populate('members', 'name email role');
 
         if (!team) {
             return NextResponse.json({ error: 'Team not found' }, { status: 404 });
@@ -97,7 +97,7 @@ export async function PATCH(
 
         const updatedTeam = await Team.findByIdAndUpdate(id, updates, { new: true })
             .populate('trainer', 'name email')
-            .populate('members', 'name email');
+            .populate('members', 'name email role');
 
         if (!updatedTeam) {
             return NextResponse.json({ error: 'Team not found' }, { status: 404 });

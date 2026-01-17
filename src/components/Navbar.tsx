@@ -17,7 +17,7 @@ export function Navbar({ currentPage }: NavbarProps) {
 
     useEffect(() => {
         const fetchUserTeam = async () => {
-            if (user?.role === 'member') {
+            if (user?.role === 'member' || user?.role === 'coach') {
                 try {
                     const res = await fetch('/api/teams');
                     if (res.ok) {
@@ -63,8 +63,8 @@ export function Navbar({ currentPage }: NavbarProps) {
                             </Link>
                         )}
                         {currentPage !== 'teams' && (
-                            <Link href={user?.role === 'member' && userTeamId ? `/teams/${userTeamId}` : '/teams'} className="hidden md:inline-block">
-                                <Button variant="ghost" size="sm">{user?.role === 'member' ? 'My Team' : 'Teams'}</Button>
+                            <Link href={(user?.role === 'member' || user?.role === 'coach') && userTeamId ? `/teams/${userTeamId}` : '/teams'} className="hidden md:inline-block">
+                                <Button variant="ghost" size="sm">{(user?.role === 'member' || user?.role === 'coach') ? 'My Team' : 'Teams'}</Button>
                             </Link>
                         )}
                         <ThemeToggle />

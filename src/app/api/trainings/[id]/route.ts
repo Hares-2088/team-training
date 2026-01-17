@@ -1,6 +1,7 @@
 import { connectDB } from '@/lib/db/mongodb';
 import Training from '@/models/Training';
 import Team from '@/models/Team';
+import User from '@/models/User';
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken } from '@/lib/auth';
 
@@ -88,9 +89,15 @@ export async function PATCH(
             return NextResponse.json({ error: 'Training not found' }, { status: 404 });
         }
 
-        // Check if user is the trainer of the training's team
-        const team = await Team.findById(training.team);
-        if (!team || team.trainer.toString() !== decoded.userId) {
+        // Check if user is the trainer of the training's team OR coach in the team
+        const team = await Team.findById(training.team).populate('members', '_id');
+        if (!team) {
+            return NextResponse.json({ error: 'Team not found' }, { status: 404 });
+        }
+        const isTrainer = team.trainer.toString() === decoded.userId;
+        const requester = await User.findById(decoded.userId).select('role');
+        const isCoachMember = requester?.role === 'coach' && team.members.some((m: any) => String(m?._id ?? m) === decoded.userId);
+        if (!isTrainer && !isCoachMember) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
         }
 
@@ -145,9 +152,15 @@ export async function DELETE(
             return NextResponse.json({ error: 'Training not found' }, { status: 404 });
         }
 
-        // Check if user is the trainer of the training's team
-        const team = await Team.findById(training.team);
-        if (!team || team.trainer.toString() !== decoded.userId) {
+        // Check if user is the trainer of the training's team OR coach in the team
+        const team = await Team.findById(training.team).populate('members', '_id');
+        if (!team) {
+            return NextResponse.json({ error: 'Team not found' }, { status: 404 });
+        }
+        const isTrainer = team.trainer.toString() === decoded.userId;
+        const requester = await User.findById(decoded.userId).select('role');
+        const isCoachMember = requester?.role === 'coach' && team.members.some((m: any) => String(m?._id ?? m) === decoded.userId);
+        if (!isTrainer && !isCoachMember) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
         }
 

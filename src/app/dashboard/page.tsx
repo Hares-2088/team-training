@@ -6,9 +6,31 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Navbar } from '@/components/Navbar';
 import { ActivityChart } from '@/components/ActivityChart';
 import { useAuth } from '@/contexts/AuthContext';
+import { useEffect } from 'react';
 
 export default function Dashboard() {
     const { user, loading } = useAuth();
+    const router = require('next/navigation').useRouter();
+
+    useEffect(() => {
+        const checkTeam = async () => {
+            if (!loading && user && user.role !== 'trainer') {
+                try {
+                    const res = await fetch('/api/teams', { credentials: 'include' });
+                    if (res.ok) {
+                        const teams = await res.json();
+                        if (!Array.isArray(teams) || teams.length === 0) {
+                            // No team, not a trainer -> go to role select
+                            router.push('/auth/role-select');
+                        }
+                    }
+                } catch {
+                    // ignore
+                }
+            }
+        };
+        checkTeam();
+    }, [loading, user]);
 
     if (loading) {
         return (
@@ -22,6 +44,7 @@ export default function Dashboard() {
     }
 
     const userRole = user?.role || 'member';
+    const canManageTrainings = userRole === 'trainer' || userRole === 'coach';
 
     return (
         <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-50">
@@ -86,6 +109,68 @@ export default function Dashboard() {
                                 <CardContent>
                                     <Link href="/teams">
                                         <Button className="w-full">Go to Teams</Button>
+                                    </Link>
+                                </CardContent>
+                            </Card>
+                        </>
+                    ) : canManageTrainings ? (
+                        <>
+                            <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow cursor-pointer">
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2">
+                                        <span className="text-2xl">➕</span>
+                                        <span className="inline-block">Create New Training</span>
+                                    </CardTitle>
+                                    <CardDescription>Design a workout for your team</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <Link href="/trainings/create">
+                                        <Button className="w-full">Create Training</Button>
+                                    </Link>
+                                </CardContent>
+                            </Card>
+
+                            <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow cursor-pointer">
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2">
+                                        <span className="text-2xl">🏋️</span>
+                                        <span className="inline-block">View Workout Plans</span>
+                                    </CardTitle>
+                                    <CardDescription>See all workout plans for your team</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <Link href="/trainings">
+                                        <Button className="w-full">Browse Plans</Button>
+                                    </Link>
+                                </CardContent>
+                            </Card>
+
+                            <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow cursor-pointer">
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2">
+                                        <span className="text-2xl">📊</span>
+                                        <span className="inline-block">My Workout Stats</span>
+                                    </CardTitle>
+                                    <CardDescription>View your workout history and progress</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <Link href="/dashboard/my-trainings" className="block">
+                                        <Button className="w-full">View My Workout Stats</Button>
+                                    </Link>
+                                </CardContent>
+                            </Card>
+
+                            <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow cursor-pointer">
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2">
+                                        <span className="text-2xl">👥</span>
+                                        <span className="inline-block">My Team</span>
+                                    </CardTitle>
+                                    <CardDescription>View your team and team members</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <Link href="/teams">
+                                        <Button className="w-full">View Team</Button>
                                     </Link>
                                 </CardContent>
                             </Card>

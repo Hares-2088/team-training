@@ -18,6 +18,7 @@ export default function RoleSelectPage() {
     const [showInviteModal, setShowInviteModal] = useState(false);
     const [inviteCode, setInviteCode] = useState('');
     const [isJoiningTeam, setIsJoiningTeam] = useState(false);
+    // Role is decided here only for trainer vs member. Coach promotion is done by trainers in team view.
 
     // Redirect if not authenticated
     if (!user) {
@@ -113,7 +114,7 @@ export default function RoleSelectPage() {
                 <div className="mb-12">
                     <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">Choose Your Role</h2>
                     <p className="text-lg text-slate-600 dark:text-slate-400">
-                        Are you a trainer creating workout plans or a member joining a team?
+                        Are you a trainer, a coach helping manage workouts, or a member joining a team?
                     </p>
                 </div>
 
@@ -201,6 +202,8 @@ export default function RoleSelectPage() {
                             </Button>
                         </CardContent>
                     </Card>
+
+                    {/* Coach role is assigned by trainers inside team view. */}
                 </div>
             </main>
 
