@@ -55,10 +55,12 @@ export default function CreateTrainingPage() {
             {/* Main Content */}
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
                 <div className="max-w-2xl mx-auto">
-                    <button onClick={() => router.push('/dashboard')} className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-all text-sm mb-4 inline-flex items-center gap-1 hover:-translate-x-0.5">
-                        <ChevronLeft className="w-4 h-4 transition-transform" />
-                        Back to Dashboard
-                    </button>
+                    <Link href="/dashboard" className="inline-flex mb-4">
+                        <Button variant="ghost" size="sm" className="gap-2">
+                            <ChevronLeft className="w-4 h-4" />
+                            Back to Dashboard
+                        </Button>
+                    </Link>
 
                     {error && (
                         <div className="mb-4 rounded-md border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 px-4 py-3 text-sm text-red-700 dark:text-red-400">
