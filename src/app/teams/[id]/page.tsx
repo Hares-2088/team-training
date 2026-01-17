@@ -254,8 +254,8 @@ export default function TeamDetailPage() {
                             Array.from(new Map(team.members.map(m => [m._id, m])).values()).map((member) => (
                                 <Card key={member._id} className="hover:shadow-md transition-shadow">
                                     <CardContent className="pt-6">
-                                        <div className="flex items-center justify-between">
-                                            <div>
+                                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                                            <div className="flex-1">
                                                 <div className="flex items-center gap-2">
                                                     <p className="font-semibold text-slate-900 dark:text-white">{member.name}</p>
                                                     <span className="inline-flex items-center gap-1 text-xs text-slate-600 dark:text-slate-400">
@@ -272,26 +272,27 @@ export default function TeamDetailPage() {
                                                     {member.email}
                                                 </p>
                                             </div>
-                                            <div className="flex gap-2">
-                                                {user?.role === 'trainer' && (
-                                                    <>
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            onClick={() => router.push(`/teams/${id}/members/${member._id}`)}
-                                                            className="flex items-center gap-2"
-                                                        >
-                                                            <Eye className="w-4 h-4" />
-                                                            View Logs
-                                                        </Button>
+                                            {user?.role === 'trainer' && (
+                                                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => router.push(`/teams/${id}/members/${member._id}`)}
+                                                        className="flex items-center gap-2 w-full sm:w-auto justify-center"
+                                                    >
+                                                        <Eye className="w-4 h-4" />
+                                                        View Logs
+                                                    </Button>
+                                                    <div className="flex gap-2">
                                                         {member.role === 'coach' ? (
                                                             <Button
                                                                 variant="outline"
                                                                 size="sm"
                                                                 onClick={() => handleSetRole(member._id, 'member')}
                                                                 disabled={roleUpdatingId === member._id}
+                                                                className="flex-1 sm:flex-none"
                                                             >
-                                                                Demote to Member
+                                                                Demote
                                                             </Button>
                                                         ) : (
                                                             <Button
@@ -299,8 +300,9 @@ export default function TeamDetailPage() {
                                                                 size="sm"
                                                                 onClick={() => handleSetRole(member._id, 'coach')}
                                                                 disabled={roleUpdatingId === member._id}
+                                                                className="flex-1 sm:flex-none"
                                                             >
-                                                                Promote to Coach
+                                                                Promote
                                                             </Button>
                                                         )}
                                                         <Button
@@ -308,12 +310,13 @@ export default function TeamDetailPage() {
                                                             size="sm"
                                                             onClick={() => handleRemoveMemberClick(member._id, member.name)}
                                                             disabled={removingMemberId === member._id}
+                                                            className="flex-1 sm:flex-none"
                                                         >
                                                             <Trash2 className="w-4 h-4" />
                                                         </Button>
-                                                    </>
-                                                )}
-                                            </div>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     </CardContent>
                                 </Card>

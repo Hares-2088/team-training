@@ -57,26 +57,26 @@ export function TrainingCard({
                         <span>📅 {new Date(date).toLocaleDateString()}</span>
                         <span>💪 {exerciseCount} exercises</span>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-col sm:flex-row gap-2">
                         <Link href={`/trainings/${id}`} className="flex-1">
                             <Button className="w-full" variant="default">
                                 View Details
                             </Button>
                         </Link>
                         {!userCompleted && (
-                            <Link href={`/dashboard/log-workout/${id}`}>
-                                <Button variant="outline">Log Workout</Button>
+                            <Link href={`/dashboard/log-workout/${id}`} className="sm:flex-none w-full sm:w-auto">
+                                <Button className="w-full" variant="outline">Log Workout</Button>
                             </Link>
                         )}
                         {canManageTrainings && (
-                            <>
-                                <Button onClick={onEdit} variant="outline">
+                            <div className="flex gap-2 sm:contents">
+                                <Button onClick={onEdit} variant="outline" className="flex-1 sm:flex-none">
                                     Edit
                                 </Button>
-                                <Button onClick={onDelete} variant="destructive">
+                                <Button onClick={onDelete} variant="destructive" className="flex-1 sm:flex-none">
                                     Delete
                                 </Button>
-                            </>
+                            </div>
                         )}
                     </div>
                 </div>
