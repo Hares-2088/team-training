@@ -48,7 +48,7 @@ export function Navbar({ currentPage }: NavbarProps) {
                 <div className="flex justify-between items-center gap-2">
                     <Link href="/dashboard">
                         <h1 className="text-base sm:text-xl md:text-2xl font-bold text-primary-600 dark:text-primary-400 truncate cursor-pointer hover:text-primary-700 dark:hover:text-primary-300 transition-colors">
-                            💪 <span className="hidden sm:inline">FiT Team</span>
+                            💪 FiT Team
                         </h1>
                     </Link>
                     <div className="flex gap-1 sm:gap-2 md:gap-4 items-center shrink-0">
