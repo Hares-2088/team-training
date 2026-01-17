@@ -305,37 +305,6 @@ Uses shadcn/ui for professional, accessible components:
 - Dialog, Dropdown Menu
 - NumberInput (custom component with +/- buttons)
 
-## Features Implemented
-
-✅ User registration and login with JWT authentication
-✅ Post-registration role selection (Trainer/Member)
-✅ Auto-team creation for trainers
-✅ **Authorization & Data Isolation:**
-  - Trainers only see their own teams and trainings
-  - Members only see their team's trainings
-  - Role-based UI (different buttons/actions per role)
-  - Protected API routes with ownership validation
-✅ Invite code system (generate, validate, join)
-✅ Shareable invite links with seamless auto-registration and auto-join
-✅ Team management (create, edit, delete - trainer only)
-✅ Add/remove team members (trainer only)
-✅ Training creation with exercise details
-✅ Exercise-specific rest time configuration
-✅ Complete workout logging MVP (members only)
-✅ RPE tracking and weight/reps logging
-✅ Personal workout stats and completion tracking
-✅ User-specific training status (Completed vs Scheduled)
-✅ Dark mode support with localStorage
-✅ Responsive mobile-friendly design
-✅ Protected API routes with JWT
-✅ Role-specific navigation (My Team for members, Teams for trainers)
-✅ Workout Plans accessible from navbar
-✅ Trainer redirect prevention from logging pages
-✅ Member redirect from teams list to team details
-✅ Logout button in global navigation bar
-✅ Accurate member counts on team listing pages
-✅ Duplicate member prevention with frontend filtering
-
 ## Next Steps (Future Enhancements)
 
 - [ ] Workout performance analytics and charts
@@ -355,27 +324,6 @@ Create `.env.local` file:
 MONGODB_URI=mongodb://localhost:27017/team-training
 JWT_SECRET=your-secret-key-change-in-production
 ```
-
-## Seeding Test Data
-
-Run the seed script to populate the database with test data:
-
-```bash
-node seed.js
-```
-
-This creates:
-- 1 Trainer: `trainer@test.com` / `trainer123`
-- 2 Members: `sarah@test.com` and `mike@test.com` / `member123`
-- 1 Team: CrossFit Elite (with unique invite code)
-- 3 Trainings: 2 scheduled, 1 completed
-- 2 Workout Logs: Sample logs with RPE and timing data
-
-All test data includes:
-- Exercise-specific rest times
-- Invite codes for team joining
-- Proper authorization setup (trainer owns team, members are team members)
-- Realistic workout data with weights, reps, and RPE values
 
 ## Development
 
