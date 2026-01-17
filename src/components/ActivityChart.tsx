@@ -264,18 +264,21 @@ export function ActivityChart({ isTrainer }: { isTrainer: boolean }) {
                                 // Determine the color:
                                 // - Blue for completed trainings (from activity data)
                                 // - Pale blue for scheduled but not completed (from training data)
-                                // - Gray for no training
-                                let bgColor = 'bg-slate-100 dark:bg-slate-800';
+                                // - Transparent with border for no training to avoid looking "active" in dark mode
+                                let bgColor = 'bg-transparent dark:bg-transparent';
                                 let textColor = 'text-slate-700 dark:text-slate-300';
+                                let borderColor = 'border border-slate-200 dark:border-slate-700';
 
                                 if (active) {
                                     // Has activity (completed workout)
-                                    bgColor = 'bg-blue-600 dark:bg-blue-500';
+                                    bgColor = 'bg-blue-600 dark:bg-blue-400';
                                     textColor = 'text-white';
+                                    borderColor = 'border border-blue-600 dark:border-blue-400';
                                 } else if (hasScheduledTraining && !isTrainingCompleted) {
                                     // Scheduled but not completed
-                                    bgColor = 'bg-blue-100 dark:bg-blue-900';
-                                    textColor = 'text-slate-700 dark:text-slate-200';
+                                    bgColor = 'bg-blue-50 dark:bg-blue-900/40';
+                                    textColor = 'text-slate-700 dark:text-blue-100';
+                                    borderColor = 'border border-blue-200 dark:border-blue-700';
                                 }
 
                                 return (
@@ -295,6 +298,7 @@ export function ActivityChart({ isTrainer }: { isTrainer: boolean }) {
                                             transition-all
                                             ${bgColor}
                                             ${textColor}
+                                            ${borderColor}
                                             ${isCurrentDay ? 'ring-2 ring-offset-2 ring-blue-600 dark:ring-offset-slate-900' : ''}
                                             ${isTrainer && active ? 'cursor-pointer hover:shadow-xl' : ''}
                                         `}
@@ -316,17 +320,17 @@ export function ActivityChart({ isTrainer }: { isTrainer: boolean }) {
                         {/* Legend */}
                         <div className="flex gap-4 text-sm mt-4 pt-4 border-t border-slate-200 dark:border-slate-700 flex-wrap">
                             <div className="flex items-center gap-2">
-                                <div className="w-4 h-4 bg-blue-600 dark:bg-blue-500 rounded"></div>
+                                <div className="w-4 h-4 bg-blue-600 dark:bg-blue-400 rounded border border-blue-600 dark:border-blue-400"></div>
                                 <span className="text-slate-600 dark:text-slate-400">Trained</span>
                             </div>
                             {!isTrainer && (
                                 <div className="flex items-center gap-2">
-                                    <div className="w-4 h-4 bg-blue-100 dark:bg-blue-900 rounded border border-blue-300 dark:border-blue-700"></div>
+                                    <div className="w-4 h-4 bg-blue-50 dark:bg-blue-900/40 rounded border border-blue-200 dark:border-blue-700"></div>
                                     <span className="text-slate-600 dark:text-slate-400">Scheduled</span>
                                 </div>
                             )}
                             <div className="flex items-center gap-2">
-                                <div className="w-4 h-4 bg-slate-100 dark:bg-slate-800 rounded"></div>
+                                <div className="w-4 h-4 bg-transparent dark:bg-transparent rounded border border-slate-200 dark:border-slate-700"></div>
                                 <span className="text-slate-600 dark:text-slate-400">No training</span>
                             </div>
                             {isTrainer && (
