@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -10,8 +10,30 @@ import { Navbar } from '@/components/Navbar';
 
 export default function CreateTrainingPage() {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [prefill, setPrefill] = useState<{ title?: string; description?: string; exercises?: any[] } | null>(null);
+
+    useEffect(() => {
+        const templateId = searchParams.get('templateId');
+        const loadTemplate = async () => {
+            if (!templateId) return;
+            try {
+                const res = await fetch(`/api/workout-templates/${templateId}`);
+                if (!res.ok) return;
+                const { template } = await res.json();
+                setPrefill({
+                    title: template.title,
+                    description: template.description,
+                    exercises: template.exercises || [],
+                });
+            } catch {
+                // ignore
+            }
+        };
+        loadTemplate();
+    }, [searchParams]);
 
     const handleSubmit = async (data: any) => {
         setIsLoading(true);
@@ -70,6 +92,9 @@ export default function CreateTrainingPage() {
 
                     <CreateTrainingForm
                         defaultTeamId=""
+                        initialTitle={prefill?.title || ''}
+                        initialDescription={prefill?.description || ''}
+                        initialExercises={prefill?.exercises || []}
                         onSubmit={handleSubmit}
                         isLoading={isLoading}
                     />

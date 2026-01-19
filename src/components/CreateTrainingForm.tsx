@@ -8,6 +8,7 @@ import { NumberInput } from '@/components/ui/number-input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DatePicker } from '@/components/ui/date-picker';
 import { useState, useEffect } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Exercise {
     name: string;
@@ -19,6 +20,9 @@ interface Exercise {
 
 interface CreateTrainingFormProps {
     defaultTeamId?: string;
+    initialTitle?: string;
+    initialDescription?: string;
+    initialExercises?: Exercise[];
     onSubmit: (data: {
         title: string;
         description: string;
@@ -31,24 +35,48 @@ interface CreateTrainingFormProps {
 
 export function CreateTrainingForm({
     defaultTeamId = '',
+    initialTitle = '',
+    initialDescription = '',
+    initialExercises,
     onSubmit,
     isLoading = false,
 }: Readonly<CreateTrainingFormProps>) {
-    const [title, setTitle] = useState('');
-    const [description, setDescription] = useState('');
+    const { user } = useAuth();
+    const [title, setTitle] = useState(initialTitle);
+    const [description, setDescription] = useState(initialDescription);
     const [scheduledDate, setScheduledDate] = useState('');
     const [teamId, setTeamId] = useState(defaultTeamId);
-    const [exercises, setExercises] = useState<Exercise[]>([
-        { name: '', sets: 3, reps: '10', restTime: 90, notes: '' },
-    ]);
-    const [teams, setTeams] = useState<Array<{ _id: string; name: string }>>([]);
+    const [exercises, setExercises] = useState<Exercise[]>(
+        initialExercises && initialExercises.length > 0
+            ? initialExercises
+            : [{ name: '', sets: 3, reps: '10', restTime: 90, notes: '' }]
+    );
+    const [teams, setTeams] = useState<Array<{ _id: string; name: string; trainer?: { _id: string }; members?: Array<{ _id: string }> }>>([]);
 
     useEffect(() => {
         const fetchData = async () => {
             try {
                 const res = await fetch('/api/teams');
                 const teamsData = await res.json();
-                setTeams(teamsData);
+                // Filter to teams user can create trainings for:
+                // Trainers: their owned teams; Coaches: teams where they are a member.
+                const filtered = Array.isArray(teamsData)
+                    ? teamsData.filter((t: any) => {
+                        if (!user) return false;
+                        if (user.role === 'trainer') {
+                            return (t.trainer?._id || String(t.trainer)) === user._id;
+                        }
+                        if (user.role === 'coach') {
+                            return Array.isArray(t.members) && t.members.some((m: any) => (m?._id || String(m)) === user._id);
+                        }
+                        return false;
+                    })
+                    : [];
+                setTeams(filtered);
+                // If defaultTeamId is empty, preselect first allowed team
+                if (!defaultTeamId && filtered.length > 0) {
+                    setTeamId(filtered[0]._id);
+                }
             } catch (error) {
                 console.error('Error fetching teams:', error);
             }

@@ -136,11 +136,16 @@ export default function TrainingsPage() {
                         <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Workout Plans</h2>
                         <p className="text-slate-600 dark:text-slate-400 mt-1">View and manage your team workouts</p>
                     </div>
-                    {(user?.role === 'trainer' || user?.role === 'coach') && (
-                        <Link href="/trainings/create">
-                            <Button size="lg">Create Training</Button>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                        {(user?.role === 'trainer' || user?.role === 'coach') && (
+                            <Link href="/trainings/create" className="sm:flex-none">
+                                <Button size="lg" className="w-full sm:w-auto">Create Training</Button>
+                            </Link>
+                        )}
+                        <Link href="/library" className="sm:flex-none">
+                            <Button variant="outline" size="lg" className="w-full sm:w-auto">Workouts Library</Button>
                         </Link>
-                    )}
+                    </div>
                 </div>
 
                 {/* Filter Tabs */}
