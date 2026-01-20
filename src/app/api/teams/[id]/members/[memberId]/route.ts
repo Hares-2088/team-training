@@ -4,6 +4,23 @@ import User from '@/models/User';
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken } from '@/lib/auth';
 
+const mapTeamWithMemberRoles = (teamDoc: any) => {
+    const obj = teamDoc.toObject({ virtuals: true });
+    const trainerId = obj.trainer?._id ? String(obj.trainer._id) : String(obj.trainer);
+    const roleMap = new Map<string, string>();
+    (obj.memberRoles || []).forEach((mr: any) => {
+        roleMap.set(String(mr.user), mr.role);
+    });
+
+    const members = (obj.members || []).map((m: any) => {
+        const id = String(m?._id || m);
+        const role = id === trainerId ? 'trainer' : roleMap.get(id) || 'member';
+        return { ...m, role };
+    });
+
+    return { ...obj, members };
+};
+
 export async function DELETE(
     _request: NextRequest,
     { params }: { params: Promise<{ id: string; memberId: string }> | { id: string; memberId: string } }
@@ -19,7 +36,7 @@ export async function DELETE(
 
         const team = await Team.findByIdAndUpdate(
             id,
-            { $pull: { members: memberId } },
+            { $pull: { members: memberId, memberRoles: { user: memberId } } },
             { new: true }
         )
             .populate('trainer', 'name email')
@@ -29,7 +46,11 @@ export async function DELETE(
             return NextResponse.json({ error: 'Team not found' }, { status: 404 });
         }
 
-        return NextResponse.json({ team }, { status: 200 });
+        await User.findByIdAndUpdate(memberId, { $pull: { teams: id } });
+
+        const shaped = mapTeamWithMemberRoles(team);
+
+        return NextResponse.json({ team: shaped }, { status: 200 });
     } catch (error: any) {
         console.error('Error removing member:', error);
         return NextResponse.json(
@@ -66,7 +87,7 @@ export async function PATCH(
             return NextResponse.json({ error: 'Invalid role' }, { status: 400 });
         }
 
-        const team = await Team.findById(id).populate('members', '_id role');
+        const team = await Team.findById(id).populate('members', '_id');
         if (!team) {
             return NextResponse.json({ error: 'Team not found' }, { status: 404 });
         }
@@ -80,18 +101,22 @@ export async function PATCH(
             return NextResponse.json({ error: 'User is not a member of this team' }, { status: 400 });
         }
 
-        // Update the user's role
-        const updatedUser = await User.findByIdAndUpdate(memberId, { role }, { new: true }).select('_id name email role');
-        if (!updatedUser) {
-            return NextResponse.json({ error: 'User not found' }, { status: 404 });
+        // Update memberRoles entry
+        const updatedTeam = await Team.findOneAndUpdate(
+            { _id: id, 'memberRoles.user': memberId },
+            { $set: { 'memberRoles.$.role': role } },
+            { new: true }
+        )
+            .populate('trainer', 'name email')
+            .populate('members', 'name email');
+
+        if (!updatedTeam) {
+            return NextResponse.json({ error: 'User not found in team' }, { status: 404 });
         }
 
-        // Return updated team with member roles
-        const updatedTeam = await Team.findById(id)
-            .populate('trainer', 'name email')
-            .populate('members', 'name email role');
+        const shaped = mapTeamWithMemberRoles(updatedTeam);
 
-        return NextResponse.json({ team: updatedTeam }, { status: 200 });
+        return NextResponse.json({ team: shaped }, { status: 200 });
     } catch (error: any) {
         console.error('Error updating member role:', error);
         return NextResponse.json(

@@ -69,7 +69,9 @@ export function ActivityChart({ isTrainer }: { isTrainer: boolean }) {
 
                 // Create map of completed training IDs
                 const completedTrainings = new Set(
-                    workoutLogs.map((log: any) => log.training._id)
+                    workoutLogs
+                        .filter((log: any) => log.training)
+                        .map((log: any) => typeof log.training === 'string' ? log.training : log.training._id)
                 );
 
                 // Build training days map

@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { LogOut } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useState, useEffect } from 'react';
 
 interface NavbarProps {
     currentPage?: 'dashboard' | 'teams' | 'workouts';
@@ -13,26 +12,6 @@ interface NavbarProps {
 
 export function Navbar({ currentPage }: NavbarProps) {
     const { logout, user } = useAuth();
-    const [userTeamId, setUserTeamId] = useState<string | null>(null);
-
-    useEffect(() => {
-        const fetchUserTeam = async () => {
-            if (user?.role === 'member' || user?.role === 'coach') {
-                try {
-                    const res = await fetch('/api/teams');
-                    if (res.ok) {
-                        const teams = await res.json();
-                        if (teams.length > 0) {
-                            setUserTeamId(teams[0]._id);
-                        }
-                    }
-                } catch (error) {
-                    console.error('Failed to fetch team:', error);
-                }
-            }
-        };
-        fetchUserTeam();
-    }, [user]);
 
     const handleLogout = async () => {
         try {
@@ -63,8 +42,8 @@ export function Navbar({ currentPage }: NavbarProps) {
                             </Link>
                         )}
                         {currentPage !== 'teams' && (
-                            <Link href={(user?.role === 'member' || user?.role === 'coach') && userTeamId ? `/teams/${userTeamId}` : '/teams'} className="hidden md:inline-block">
-                                <Button variant="ghost" size="sm">{(user?.role === 'member' || user?.role === 'coach') ? 'My Team' : 'Teams'}</Button>
+                            <Link href="/teams" className="hidden md:inline-block">
+                                <Button variant="ghost" size="sm">Teams</Button>
                             </Link>
                         )}
                         <ThemeToggle />

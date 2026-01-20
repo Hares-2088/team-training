@@ -3,6 +3,23 @@ import Team from '@/models/Team';
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken } from '@/lib/auth';
 
+const mapTeamWithMemberRoles = (teamDoc: any) => {
+    const obj = teamDoc.toObject({ virtuals: true });
+    const trainerId = obj.trainer?._id ? String(obj.trainer._id) : String(obj.trainer);
+    const roleMap = new Map<string, string>();
+    (obj.memberRoles || []).forEach((mr: any) => {
+        roleMap.set(String(mr.user), mr.role);
+    });
+
+    const members = (obj.members || []).map((m: any) => {
+        const id = String(m?._id || m);
+        const role = id === trainerId ? 'trainer' : roleMap.get(id) || 'member';
+        return { ...m, role };
+    });
+
+    return { ...obj, members };
+};
+
 export async function GET(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> | { id: string } }
@@ -30,7 +47,7 @@ export async function GET(
 
         const team = await Team.findById(id)
             .populate('trainer', 'name email')
-            .populate('members', 'name email role');
+            .populate('members', 'name email');
 
         if (!team) {
             return NextResponse.json({ error: 'Team not found' }, { status: 404 });
@@ -38,13 +55,15 @@ export async function GET(
 
         // Check if user is the trainer or a member of this team
         const isTrainer = team.trainer._id.toString() === decoded.userId;
-        const isMember = team.members.some((member: any) => member._id.toString() === decoded.userId);
+        const isMember = team.members.some((member: any) => String(member?._id ?? member) === decoded.userId);
 
         if (!isTrainer && !isMember) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
         }
 
-        return NextResponse.json({ team }, { status: 200 });
+        const shapedTeam = mapTeamWithMemberRoles(team);
+
+        return NextResponse.json({ team: shapedTeam }, { status: 200 });
     } catch (error: any) {
         console.error('Error fetching team:', error);
         return NextResponse.json(
@@ -97,13 +116,15 @@ export async function PATCH(
 
         const updatedTeam = await Team.findByIdAndUpdate(id, updates, { new: true })
             .populate('trainer', 'name email')
-            .populate('members', 'name email role');
+            .populate('members', 'name email');
 
         if (!updatedTeam) {
             return NextResponse.json({ error: 'Team not found' }, { status: 404 });
         }
 
-        return NextResponse.json({ team: updatedTeam }, { status: 200 });
+        const shapedTeam = updatedTeam ? mapTeamWithMemberRoles(updatedTeam) : null;
+
+        return NextResponse.json({ team: shapedTeam }, { status: 200 });
     } catch (error: any) {
         console.error('Error updating team:', error);
         return NextResponse.json(

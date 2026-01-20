@@ -22,21 +22,42 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
         }
 
+        const activeTeamId = request.cookies.get('active-team')?.value || null;
+
+        // Require an active team selection to view trainings
+        if (!activeTeamId) {
+            return NextResponse.json({ error: 'Select an active team to view trainings' }, { status: 400 });
+        }
+
         // Find teams the user is part of (trainer or member)
-        const userTeams = await Team.find({
+        const membershipQuery = {
             $or: [
                 { trainer: decoded.userId },
                 { members: decoded.userId }
             ]
-        });
+        };
 
-        const teamIds = userTeams.map((team) => team._id);
+        const team = await Team.findOne({ _id: activeTeamId, ...membershipQuery });
+        if (!team) {
+            return NextResponse.json({ error: 'Unauthorized for active team' }, { status: 403 });
+        }
 
-        // Get trainings for those teams
-        const trainings = await Training.find({
-            team: { $in: teamIds }
-        }).sort({ scheduledDate: 1 });
+        // Check if user is trainer/coach or member
+        const isTrainer = String(team.trainer) === decoded.userId;
+        const memberRole = (team.memberRoles || []).find((m: any) => String(m.user) === decoded.userId)?.role;
+        const isCoach = memberRole === 'coach';
 
+        // Trainers and coaches see only team plan trainings (not personal quick-logs)
+        // Members see all trainings including their own personal ones
+        const query: any = { team: activeTeamId };
+        if (isTrainer || isCoach) {
+            query.$and = [
+                { isPersonal: { $ne: true } },
+                { title: { $not: /\(Personal\)$/ } },
+            ];
+        }
+
+        const trainings = await Training.find(query).sort({ scheduledDate: 1 });
         return NextResponse.json({ trainings }, { status: 200 });
     } catch (error: any) {
         return NextResponse.json(
@@ -79,9 +100,15 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Team not found' }, { status: 404 });
         }
 
+        // Enforce active team selection if present
+        const activeTeamId = request.cookies.get('active-team')?.value;
+        if (activeTeamId && String(activeTeamId) !== String(body.team)) {
+            return NextResponse.json({ error: 'Cannot create training for non-active team' }, { status: 403 });
+        }
+
         const isTrainer = team.trainer.toString() === decoded.userId;
-        const requester = await User.findById(decoded.userId).select('role');
-        const isCoachMember = requester?.role === 'coach' && team.members.some((m: any) => String(m?._id ?? m) === decoded.userId);
+        const memberRole = (team.memberRoles || []).find((m: any) => String(m.user) === decoded.userId)?.role;
+        const isCoachMember = memberRole === 'coach';
         if (!isTrainer && !isCoachMember) {
             return NextResponse.json({ error: 'Unauthorized - only team trainer or coach can create trainings' }, { status: 403 });
         }

@@ -14,10 +14,26 @@ const teamSchema = new mongoose.Schema(
             ref: 'User',
             required: true,
         },
+        // Flat member ids kept for compatibility with existing code paths
         members: [
             {
                 type: mongoose.Schema.Types.ObjectId,
                 ref: 'User',
+            },
+        ],
+        // Memberships with per-user role assignment
+        memberRoles: [
+            {
+                user: {
+                    type: mongoose.Schema.Types.ObjectId,
+                    ref: 'User',
+                    required: true,
+                },
+                role: {
+                    type: String,
+                    enum: ['trainer', 'member', 'coach'],
+                    default: 'member',
+                },
             },
         ],
         inviteCode: {

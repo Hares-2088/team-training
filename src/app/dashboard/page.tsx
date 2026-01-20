@@ -9,12 +9,14 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useEffect } from 'react';
 
 export default function Dashboard() {
-    const { user, loading } = useAuth();
+    const { user, loading, activeTeam } = useAuth();
     const router = require('next/navigation').useRouter();
+
+    const effectiveRole = activeTeam.role || user?.role || null;
 
     useEffect(() => {
         const checkTeam = async () => {
-            if (!loading && user && user.role !== 'trainer') {
+            if (!loading && user && effectiveRole !== 'trainer') {
                 try {
                     const res = await fetch('/api/teams', { credentials: 'include' });
                     if (res.ok) {
@@ -30,7 +32,7 @@ export default function Dashboard() {
             }
         };
         checkTeam();
-    }, [loading, user]);
+    }, [loading, user, effectiveRole]);
 
     if (loading) {
         return (
@@ -43,7 +45,7 @@ export default function Dashboard() {
         );
     }
 
-    const userRole = user?.role || 'member';
+    const userRole = effectiveRole || 'member';
     const canManageTrainings = userRole === 'trainer' || userRole === 'coach';
 
     return (

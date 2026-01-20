@@ -22,19 +22,23 @@ const userSchema = new mongoose.Schema(
             minlength: 6,
             select: false,
         },
-        role: {
-            type: String,
-            enum: ['trainer', 'member', 'coach'],
-            default: 'member',
-        },
-        team: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'Team',
-        },
+        teams: [
+            {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: 'Team',
+            },
+        ],
     },
     {
         timestamps: true,
+        toJSON: { virtuals: true },
+        toObject: { virtuals: true },
     }
 );
+
+// Provide a backward-compatible virtual role so existing consumers can still read user.role
+userSchema.virtual('role').get(function (this: any) {
+    return this._computedRole || 'member';
+});
 
 export default mongoose.models.User || mongoose.model('User', userSchema);

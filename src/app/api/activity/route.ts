@@ -20,11 +20,13 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
         }
 
-        const isTrainer = decoded.role === 'trainer';
+        const activeTeamId = request.cookies.get('active-team')?.value;
+        const isTrainer = decoded.role === 'trainer' || false;
 
         if (isTrainer) {
             // Get all teams for this trainer
-            const teams = await Team.find({ trainer: decoded.userId });
+            const teamQuery = activeTeamId ? { _id: activeTeamId, trainer: decoded.userId } : { trainer: decoded.userId };
+            const teams = await Team.find(teamQuery);
             const teamIds = teams.map((t) => t._id);
 
             console.log('Trainer activity - Teams found:', teamIds.length, 'Team IDs:', teamIds);

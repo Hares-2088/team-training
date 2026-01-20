@@ -15,10 +15,29 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
+        const activeTeamId = request.cookies.get('active-team')?.value || null;
+
+        // Members/coaches: always can see their own logs (all teams)
+        // Trainers: scope to their teams; if active team set, narrow to it
+
         let workoutLogs;
 
-        if (currentUser.role === 'trainer') {
-            // Trainers can see workout logs for all members in their teams
+        if (activeTeamId) {
+            const activeTeam = await Team.findById(activeTeamId);
+            if (activeTeam && String(activeTeam.trainer) === currentUser.userId) {
+                const trainings = await Training.find({ team: activeTeamId });
+                const trainingIds = trainings.map((t) => t._id);
+                workoutLogs = await WorkoutLog.find({ training: { $in: trainingIds } })
+                    .populate('training', 'title scheduledDate')
+                    .populate('member', 'name')
+                    .sort({ completedAt: -1 });
+            } else {
+                workoutLogs = await WorkoutLog.find({ member: currentUser.userId })
+                    .populate('training', 'title scheduledDate')
+                    .populate('member', 'name')
+                    .sort({ completedAt: -1 });
+            }
+        } else if (currentUser.role === 'trainer') {
             const teams = await Team.find({ trainer: currentUser.userId });
             const teamIds = teams.map((t) => t._id);
             const trainings = await Training.find({ team: { $in: teamIds } });
@@ -29,7 +48,6 @@ export async function GET(request: NextRequest) {
                 .populate('member', 'name')
                 .sort({ completedAt: -1 });
         } else {
-            // Members can only see their own workout logs
             workoutLogs = await WorkoutLog.find({ member: currentUser.userId })
                 .populate('training', 'title scheduledDate')
                 .populate('member', 'name')

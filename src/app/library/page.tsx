@@ -21,7 +21,7 @@ type Template = {
 };
 
 export default function WorkoutLibraryPage() {
-    const { user } = useAuth();
+    const { user, activeTeam } = useAuth();
     const router = useRouter();
     const [templates, setTemplates] = useState<Template[]>([]);
     const [filteredTemplates, setFilteredTemplates] = useState<Template[]>([]);
@@ -62,16 +62,17 @@ export default function WorkoutLibraryPage() {
 
     // Fetch teams if trainer
     useEffect(() => {
-        if (user?.role === 'trainer') {
+        const role = activeTeam.role || user?.role;
+        if (role === 'trainer') {
             const fetchTeams = async () => {
                 try {
                     const res = await fetch('/api/teams');
                     if (res.ok) {
                         const data = await res.json();
-                        console.log('Fetched teams:', data.teams);
-                        setTeams(data.teams || []);
-                        if (data.teams && data.teams.length > 0) {
-                            setSelectedTeamId(data.teams[0]._id);
+                        const list = Array.isArray(data) ? data : data.teams || [];
+                        setTeams(list);
+                        if (list.length > 0) {
+                            setSelectedTeamId(activeTeam.teamId || list[0]._id);
                         }
                     }
                 } catch (err) {
@@ -80,7 +81,7 @@ export default function WorkoutLibraryPage() {
             };
             fetchTeams();
         }
-    }, [user]);
+    }, [user, activeTeam.role]);
 
     // Filter templates when selected tags change
     useEffect(() => {
@@ -104,8 +105,9 @@ export default function WorkoutLibraryPage() {
         setSelectedTags(newTags);
     };
 
-    const isTrainer = user?.role === 'trainer';
-    const isCoach = user?.role === 'coach';
+    const role = activeTeam.role || user?.role;
+    const isTrainer = role === 'trainer';
+    const isCoach = role === 'coach';
 
     const addToPlan = async (templateId: string) => {
         if (isTrainer && !selectedTeamId) {

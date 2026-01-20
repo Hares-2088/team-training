@@ -31,8 +31,27 @@ export async function POST(
             return NextResponse.json({ error: 'Training not found' }, { status: 404 });
         }
 
+        // Enforce active team selection when present
+        const activeTeamId = request.cookies.get('active-team')?.value;
+        if (activeTeamId && String(activeTeamId) !== String(training.team)) {
+            return NextResponse.json({ error: 'Training not in active team' }, { status: 403 });
+        }
+
+        const team = await Team.findById(training.team).select('trainer memberRoles members');
+        if (!team) {
+            return NextResponse.json({ error: 'Team not found' }, { status: 404 });
+        }
+
+        const isTrainer = String(team.trainer) === currentUser.userId;
+        const memberRole = (team.memberRoles || []).find((m: any) => String(m.user) === currentUser.userId)?.role;
+        const isMember = team.members.some((memberId: any) => String(memberId?._id ?? memberId) === currentUser.userId);
+
+        if (!isTrainer && !isMember && !memberRole) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+        }
+
         // Trainers should not log workouts
-        if (currentUser.role === 'trainer') {
+        if (isTrainer) {
             return NextResponse.json({ error: 'Trainers cannot log workouts' }, { status: 403 });
         }
 
@@ -88,15 +107,22 @@ export async function GET(
         }
 
         // Check if user has access to this training's team
-        const team = await Team.findById(training.team);
+        const team = await Team.findById(training.team).select('trainer members memberRoles');
         if (!team) {
             return NextResponse.json({ error: 'Team not found' }, { status: 404 });
         }
 
-        const isTrainer = team.trainer.toString() === decoded.userId;
-        const isMember = team.members.some((memberId: any) => memberId.toString() === decoded.userId);
+        // Enforce active team selection when present
+        const activeTeamId = request.cookies.get('active-team')?.value;
+        if (activeTeamId && String(activeTeamId) !== String(team._id)) {
+            return NextResponse.json({ error: 'Training not in active team' }, { status: 403 });
+        }
 
-        if (!isTrainer && !isMember) {
+        const isTrainer = String(team.trainer) === decoded.userId;
+        const memberRole = (team.memberRoles || []).find((m: any) => String(m.user) === decoded.userId)?.role;
+        const isMember = team.members.some((memberId: any) => String(memberId?._id ?? memberId) === decoded.userId);
+
+        if (!isTrainer && !isMember && !memberRole) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
         }
 

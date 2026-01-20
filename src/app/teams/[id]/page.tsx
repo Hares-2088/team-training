@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -31,12 +31,13 @@ type Team = {
 };
 
 export default function TeamDetailPage() {
-    const { user } = useAuth();
+    const { user, activeTeam } = useAuth();
     const params = useParams();
     const router = useRouter();
     const id = params.id as string;
 
     const [team, setTeam] = useState<Team | null>(null);
+    const effectiveRole = activeTeam.role || user?.role || null;
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
@@ -45,6 +46,17 @@ export default function TeamDetailPage() {
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [showRemoveMemberDialog, setShowRemoveMemberDialog] = useState<{ isOpen: boolean; memberId: string; memberName: string }>({ isOpen: false, memberId: '', memberName: '' });
     const [roleUpdatingId, setRoleUpdatingId] = useState<string | null>(null);
+
+    const filteredMembers = useMemo(() => {
+        if (!team?.members) return [];
+        const trainerId = team.trainer?._id;
+        const unique = new Map(
+            team.members
+                .filter(m => !trainerId || String(m._id) !== String(trainerId))
+                .map(m => [m._id, m])
+        );
+        return Array.from(unique.values());
+    }, [team]);
 
     useEffect(() => {
         const fetchTeam = async () => {
@@ -140,9 +152,9 @@ export default function TeamDetailPage() {
             <div className="min-h-screen bg-gray-50 dark:bg-slate-950">
                 <Navbar currentPage="teams" />
                 <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-                    <Link href={user?.role === 'member' ? '/dashboard' : '/teams'} className="text-primary-600 dark:text-primary-400 hover:underline flex items-center gap-2 mb-6">
+                    <Link href="/teams" className="text-primary-600 dark:text-primary-400 hover:underline flex items-center gap-2 mb-6">
                         <ChevronLeft className="w-4 h-4" />
-                        {user?.role === 'member' ? 'Back to Dashboard' : 'Back to Teams'}
+                        Back to Teams
                     </Link>
                     <div className="text-center text-slate-600 dark:text-slate-400">Loading team details...</div>
                 </main>
@@ -155,9 +167,9 @@ export default function TeamDetailPage() {
             <div className="min-h-screen bg-gray-50 dark:bg-slate-950">
                 <Navbar currentPage="teams" />
                 <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-                    <Link href={user?.role === 'member' ? '/dashboard' : '/teams'} className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-all flex items-center gap-2 hover:-translate-x-0.5 mb-6">
+                    <Link href="/teams" className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-all flex items-center gap-2 hover:-translate-x-0.5 mb-6">
                         <ChevronLeft className="w-4 h-4 transition-transform" />
-                        {user?.role === 'member' ? 'Back to Dashboard' : 'Back to Teams'}
+                        Back to Teams
                     </Link>
                     <Card className="border-danger-200 dark:border-danger-800 bg-danger-50 dark:bg-danger-950">
                         <CardContent className="py-8 text-center text-danger-700 dark:text-danger-200">
@@ -175,9 +187,9 @@ export default function TeamDetailPage() {
 
             {/* Main Content */}
             <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-                <Link href={user?.role === 'member' ? '/dashboard' : '/teams'} className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-all flex items-center gap-2 hover:-translate-x-0.5 mb-6">
+                <Link href="/teams" className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-all flex items-center gap-2 hover:-translate-x-0.5 mb-6">
                     <ChevronLeft className="w-4 h-4 transition-transform" />
-                    {user?.role === 'member' ? 'Back to Dashboard' : 'Back to Teams'}
+                    Back to Teams
                 </Link>
                 {/* Header Card */}
                 <Card className="shadow-lg mb-8">
@@ -211,7 +223,7 @@ export default function TeamDetailPage() {
                         )}
 
                         {/* Action Buttons - Only for trainers */}
-                        {user?.role === 'trainer' && (
+                        {effectiveRole === 'trainer' && (
                             <div className="flex gap-3 flex-wrap">
                                 <Button
                                     className="flex-1 min-w-[120px]"
@@ -245,13 +257,12 @@ export default function TeamDetailPage() {
                 <div>
                     <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
                         <Users className="w-6 h-6 text-primary-600 dark:text-primary-400" />
-                        Team Members ({team.members?.length || 0})
+                        Team Members ({filteredMembers.length})
                     </h2>
 
                     <div className="grid grid-cols-1 gap-4">
-                        {team.members && team.members.length > 0 ? (
-                            // Filter out duplicate members by _id
-                            Array.from(new Map(team.members.map(m => [m._id, m])).values()).map((member) => (
+                        {filteredMembers.length > 0 ? (
+                            filteredMembers.map((member) => (
                                 <Card key={member._id} className="hover:shadow-md transition-shadow">
                                     <CardContent className="pt-6">
                                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -272,7 +283,7 @@ export default function TeamDetailPage() {
                                                     {member.email}
                                                 </p>
                                             </div>
-                                            {user?.role === 'trainer' && (
+                                            {effectiveRole === 'trainer' && (
                                                 <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                                                     <Button
                                                         variant="outline"

@@ -33,16 +33,21 @@ export async function POST(
         }
 
         // Check if user is already a member
-        if (team.members.includes(decoded.userId)) {
+        const alreadyMember =
+            team.members.includes(decoded.userId) ||
+            team.memberRoles.some((m: any) => String(m.user) === decoded.userId);
+
+        if (alreadyMember) {
             return NextResponse.json({ error: 'You are already a member of this team' }, { status: 400 });
         }
 
-        // Add user to team
+        // Add user to team with role mapping
         team.members.push(decoded.userId);
+        team.memberRoles.push({ user: decoded.userId, role: 'member' });
         await team.save();
 
-        // Update user role to member if not already
-        await User.findByIdAndUpdate(decoded.userId, { role: 'member' });
+        // Track membership on the user document
+        await User.findByIdAndUpdate(decoded.userId, { $addToSet: { teams: team._id } });
 
         return NextResponse.json(
             { message: 'Successfully joined team', team },

@@ -17,22 +17,28 @@ type Training = {
     scheduledDate: string;
     exercises?: { name: string }[];
     status: 'scheduled' | 'completed' | 'cancelled';
-    userCompleted?: boolean; // New field to track if current user completed it
+    team?: string;
+    allMembersCompleted?: boolean;
 };
 
 type WorkoutLog = {
     _id: string;
-    training: {
-        _id: string;
-    };
+    training: string | { _id: string };
+    member: string;
+};
+
+type Team = {
+    _id: string;
+    members: Array<{ _id: string }> | string[];
 };
 
 export default function TrainingsPage() {
-    const { user } = useAuth();
+    const { user, activeTeam } = useAuth();
     const router = useRouter();
     const [trainings, setTrainings] = useState<Training[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const effectiveRole = activeTeam.role || user?.role || null;
     const [filter, setFilter] = useState<'all' | 'scheduled' | 'completed'>('all');
     const [deleteDialog, setDeleteDialog] = useState<{ isOpen: boolean; trainingId: string; title: string }>({
         isOpen: false,
@@ -44,11 +50,7 @@ export default function TrainingsPage() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                // Fetch both trainings and user's workout logs
-                const [trainingsRes, workoutLogsRes] = await Promise.all([
-                    fetch('/api/trainings', { credentials: 'include' }),
-                    fetch('/api/workout-logs', { credentials: 'include' }),
-                ]);
+                const trainingsRes = await fetch('/api/trainings', { credentials: 'include' });
 
                 if (!trainingsRes.ok) {
                     const payload = await trainingsRes.json();
@@ -56,22 +58,54 @@ export default function TrainingsPage() {
                 }
 
                 const trainingsData = await trainingsRes.json();
-                const workoutLogsData = workoutLogsRes.ok ? await workoutLogsRes.json() : [];
+                const loadedTrainings = trainingsData.trainings || [];
 
-                // Create a Set of training IDs that the user has completed
-                const completedTrainingIds = new Set(
-                    workoutLogsData
-                        .filter((log: WorkoutLog) => log.training) // Only include logs with training
-                        .map((log: WorkoutLog) => log.training._id || log.training)
-                );
+                // For trainers/coaches: check if all members completed each training
+                if (effectiveRole === 'trainer' || effectiveRole === 'coach') {
+                    // Fetch active team data to know member count
+                    const teamRes = await fetch(`/api/teams/${activeTeam.teamId}`, { credentials: 'include' });
+                    if (teamRes.ok) {
+                        const teamData = await teamRes.json();
+                        const team: Team = teamData.team;
+                        const memberCount = team.members?.length || 0;
 
-                // Mark trainings as completed if user has a workout log for them
-                const trainingsWithStatus = trainingsData.trainings.map((training: Training) => ({
-                    ...training,
-                    userCompleted: completedTrainingIds.has(training._id),
-                }));
+                        // For each training, fetch logs and check completion
+                        const trainingsWithCompletion = await Promise.all(
+                            loadedTrainings.map(async (training: Training) => {
+                                const logsRes = await fetch(`/api/trainings/${training._id}/logs`, { credentials: 'include' });
+                                if (logsRes.ok) {
+                                    const logsData = await logsRes.json();
+                                    const logs = logsData.logs || [];
+                                    // Count unique members who logged this training
+                                    const uniqueMembers = new Set(logs.map((log: WorkoutLog) => log.member));
+                                    const allMembersCompleted = memberCount > 0 && uniqueMembers.size >= memberCount;
+                                    return { ...training, allMembersCompleted };
+                                }
+                                return { ...training, allMembersCompleted: false };
+                            })
+                        );
+                        setTrainings(trainingsWithCompletion);
+                    } else {
+                        setTrainings(loadedTrainings);
+                    }
+                } else {
+                    // For members: fetch their logs
+                    const workoutLogsRes = await fetch('/api/workout-logs', { credentials: 'include' });
+                    const workoutLogsData = workoutLogsRes.ok ? await workoutLogsRes.json() : [];
 
-                setTrainings(trainingsWithStatus);
+                    const completedTrainingIds = new Set(
+                        workoutLogsData
+                            .filter((log: WorkoutLog) => log.training)
+                            .map((log: WorkoutLog) => typeof log.training === 'string' ? log.training : log.training._id)
+                    );
+
+                    const trainingsWithStatus = loadedTrainings.map((training: Training) => ({
+                        ...training,
+                        allMembersCompleted: completedTrainingIds.has(training._id),
+                    }));
+
+                    setTrainings(trainingsWithStatus);
+                }
             } catch (err) {
                 const message = err instanceof Error ? err.message : 'Failed to load trainings';
                 setError(message);
@@ -81,13 +115,16 @@ export default function TrainingsPage() {
         };
 
         fetchData();
-    }, []);
+    }, [effectiveRole, activeTeam.teamId]);
 
     const filteredTrainings = trainings.filter((training) => {
         if (filter === 'all') return true;
-        // Filter based on user-specific completion status
-        if (filter === 'completed') return training.userCompleted;
-        if (filter === 'scheduled') return !training.userCompleted;
+
+        // Determine if training is completed
+        const isCompleted = training.allMembersCompleted;
+
+        if (filter === 'completed') return isCompleted;
+        if (filter === 'scheduled') return !isCompleted;
         return training.status === filter;
     });
 
@@ -137,7 +174,7 @@ export default function TrainingsPage() {
                         <p className="text-slate-600 dark:text-slate-400 mt-1">View and manage your team workouts</p>
                     </div>
                     <div className="flex flex-col sm:flex-row gap-2">
-                        {(user?.role === 'trainer' || user?.role === 'coach') && (
+                        {(effectiveRole === 'trainer' || effectiveRole === 'coach') && (
                             <Link href="/trainings/create" className="sm:flex-none">
                                 <Button size="lg" className="w-full sm:w-auto">Create Training</Button>
                             </Link>
@@ -195,8 +232,8 @@ export default function TrainingsPage() {
                                     date={training.scheduledDate}
                                     exerciseCount={training.exercises?.length || 0}
                                     status={training.status}
-                                    userCompleted={training.userCompleted}
-                                    canManageTrainings={user?.role === 'trainer' || user?.role === 'coach'}
+                                    userCompleted={training.allMembersCompleted || false}
+                                    canManageTrainings={effectiveRole === 'trainer' || effectiveRole === 'coach'}
                                     onEdit={() => handleEdit(training._id)}
                                     onDelete={() => handleDeleteClick(training._id, training.title)}
                                 />
@@ -214,7 +251,7 @@ export default function TrainingsPage() {
                             <CardContent className="py-12 text-center">
                                 <p className="text-gray-500 text-lg">No trainings yet</p>
                                 <p className="text-gray-400 mt-2">Create your first training to get started</p>
-                                {(user?.role === 'trainer' || user?.role === 'coach') && (
+                                {(effectiveRole === 'trainer' || effectiveRole === 'coach') && (
                                     <Link href="/trainings/create" className="mt-4 inline-block">
                                         <Button>Create Your First Training</Button>
                                     </Link>

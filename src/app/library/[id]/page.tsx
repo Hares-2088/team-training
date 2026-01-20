@@ -10,7 +10,7 @@ import { Navbar } from '@/components/Navbar';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function TemplateDetailPage() {
-    const { user } = useAuth();
+    const { user, activeTeam } = useAuth();
     const params = useParams();
     const router = useRouter();
     const id = params.id as string;
@@ -39,17 +39,19 @@ export default function TemplateDetailPage() {
         if (id) fetchTemplate();
     }, [id]);
 
-    // Fetch teams if trainer
+    // Fetch teams if trainer (based on active team role)
     useEffect(() => {
-        if (user?.role === 'trainer') {
+        const role = activeTeam.role || user?.role;
+        if (role === 'trainer') {
             const fetchTeams = async () => {
                 try {
                     const res = await fetch('/api/teams');
                     if (res.ok) {
                         const data = await res.json();
-                        setTeams(data.teams || []);
-                        if (data.teams && data.teams.length > 0) {
-                            setSelectedTeamId(data.teams[0]._id);
+                        const list = Array.isArray(data) ? data : data.teams || [];
+                        setTeams(list);
+                        if (list.length > 0) {
+                            setSelectedTeamId(activeTeam.teamId || list[0]._id);
                         }
                     }
                 } catch (err) {
@@ -58,9 +60,10 @@ export default function TemplateDetailPage() {
             };
             fetchTeams();
         }
-    }, [user]);
+    }, [user, activeTeam]);
 
-    const isTrainer = user?.role === 'trainer';
+    const role = activeTeam.role || user?.role;
+    const isTrainer = role === 'trainer';
 
     const addToPlan = async () => {
         if (isTrainer && !selectedTeamId) {

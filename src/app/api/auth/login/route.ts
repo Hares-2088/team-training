@@ -1,8 +1,22 @@
 import { connectDB } from '@/lib/db/mongodb';
 import User from '@/models/User';
+import Team from '@/models/Team';
 import bcryptjs from 'bcryptjs';
 import { NextRequest, NextResponse } from 'next/server';
 import { signToken } from '@/lib/auth';
+
+async function resolvePrimaryRole(userId: string): Promise<'trainer' | 'member' | 'coach'> {
+    const team = await Team.findOne({
+        $or: [{ trainer: userId }, { 'memberRoles.user': userId }],
+    }).select('trainer memberRoles');
+
+    if (!team) return 'member';
+    if (String(team.trainer) === String(userId)) return 'trainer';
+
+    const membership = team.memberRoles.find((m: any) => String(m.user) === String(userId));
+
+    return (membership?.role as 'trainer' | 'member' | 'coach') || 'member';
+}
 
 export async function POST(request: NextRequest) {
     try {
@@ -28,18 +42,21 @@ export async function POST(request: NextRequest) {
         }
 
         // Generate JWT token
+        const primaryRole = await resolvePrimaryRole(user._id.toString());
+
         const token = signToken({
             userId: user._id.toString(),
             email: user.email,
-            role: user.role,
+            role: primaryRole,
         });
 
         // Return user without password
         const { password: _, ...userWithoutPassword } = user.toObject();
+        const responseUser = { ...userWithoutPassword, role: primaryRole };
 
         // Set token in cookie
         const response = NextResponse.json(
-            { message: 'Login successful', user: userWithoutPassword },
+            { message: 'Login successful', user: responseUser },
             { status: 200 }
         );
 

@@ -22,12 +22,22 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
             return NextResponse.json({ error: 'Trainers should add templates to team plan instead.' }, { status: 403 });
         }
 
-        // Find user's team
-        const teams = await Team.find({ members: decoded.userId });
-        if (!teams || teams.length === 0) {
-            return NextResponse.json({ error: 'No team found for user' }, { status: 400 });
+        // Use active team if available, otherwise find user's first team
+        const activeTeamId = request.cookies.get('active-team')?.value;
+        let userTeam;
+
+        if (activeTeamId) {
+            userTeam = await Team.findOne({ _id: activeTeamId, members: decoded.userId });
+            if (!userTeam) {
+                return NextResponse.json({ error: 'Active team not found or unauthorized' }, { status: 403 });
+            }
+        } else {
+            const teams = await Team.find({ members: decoded.userId });
+            if (!teams || teams.length === 0) {
+                return NextResponse.json({ error: 'No team found for user' }, { status: 400 });
+            }
+            userTeam = teams[0];
         }
-        const userTeam = teams[0];
 
         // Get template
         const template = await WorkoutTemplate.findById(id).lean();
@@ -49,6 +59,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
             team: userTeam._id,
             scheduledDate: new Date(),
             status: 'scheduled',
+            isPersonal: true,
+            createdBy: decoded.userId,
         });
 
         return NextResponse.json({ trainingId: training._id.toString() }, { status: 201 });

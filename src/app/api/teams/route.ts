@@ -1,7 +1,25 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { connectDB } from '@/lib/db/mongodb';
 import Team from '@/models/Team';
+import User from '@/models/User';
 import { verifyToken } from '@/lib/auth';
+
+const mapTeamWithMemberRoles = (teamDoc: any) => {
+    const obj = teamDoc.toObject({ virtuals: true });
+    const trainerId = obj.trainer?._id ? String(obj.trainer._id) : String(obj.trainer);
+    const roleMap = new Map<string, string>();
+    (obj.memberRoles || []).forEach((mr: any) => {
+        roleMap.set(String(mr.user), mr.role);
+    });
+
+    const members = (obj.members || []).map((m: any) => {
+        const id = String(m?._id || m);
+        const role = id === trainerId ? 'trainer' : roleMap.get(id) || 'member';
+        return { ...m, role };
+    });
+
+    return { ...obj, members };
+};
 
 export async function GET(request: NextRequest) {
     try {
@@ -28,10 +46,12 @@ export async function GET(request: NextRequest) {
             ]
         })
             .populate('trainer', 'name email')
-            .populate('members', 'name email role')
+            .populate('members', 'name email')
             .sort({ name: 1 });
 
-        return NextResponse.json(teams);
+        const shaped = teams.map(mapTeamWithMemberRoles);
+
+        return NextResponse.json(shaped);
     } catch (error) {
         console.error('Error fetching teams:', error);
         return NextResponse.json({ error: 'Failed to fetch teams' }, { status: 500 });
@@ -77,7 +97,11 @@ export async function POST(request: NextRequest) {
             description: description || '',
             trainer: decoded.userId,
             inviteCode,
+            members: [decoded.userId],
+            memberRoles: [{ user: decoded.userId, role: 'trainer' }],
         });
+
+        await User.findByIdAndUpdate(decoded.userId, { $addToSet: { teams: team._id } });
 
         await team.populate('trainer', 'name email');
 

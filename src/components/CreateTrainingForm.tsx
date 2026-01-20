@@ -41,7 +41,7 @@ export function CreateTrainingForm({
     onSubmit,
     isLoading = false,
 }: Readonly<CreateTrainingFormProps>) {
-    const { user } = useAuth();
+    const { user, activeTeam } = useAuth();
     const [title, setTitle] = useState(initialTitle);
     const [description, setDescription] = useState(initialDescription);
     const [scheduledDate, setScheduledDate] = useState('');
@@ -63,18 +63,25 @@ export function CreateTrainingForm({
                 const filtered = Array.isArray(teamsData)
                     ? teamsData.filter((t: any) => {
                         if (!user) return false;
-                        if (user.role === 'trainer') {
+                        if (activeTeam.teamId) {
+                            return t._id === activeTeam.teamId;
+                        }
+                        if (activeTeam.role === 'trainer' || user.role === 'trainer') {
                             return (t.trainer?._id || String(t.trainer)) === user._id;
                         }
-                        if (user.role === 'coach') {
+                        if (activeTeam.role === 'coach' || user.role === 'coach') {
                             return Array.isArray(t.members) && t.members.some((m: any) => (m?._id || String(m)) === user._id);
                         }
                         return false;
                     })
                     : [];
                 setTeams(filtered);
-                // If defaultTeamId is empty, preselect first allowed team
-                if (!defaultTeamId && filtered.length > 0) {
+                // Prefer active team, else defaultTeamId, else first allowed team
+                if (activeTeam.teamId) {
+                    setTeamId(activeTeam.teamId);
+                } else if (defaultTeamId) {
+                    setTeamId(defaultTeamId);
+                } else if (filtered.length > 0) {
                     setTeamId(filtered[0]._id);
                 }
             } catch (error) {
@@ -82,7 +89,7 @@ export function CreateTrainingForm({
             }
         };
         fetchData();
-    }, []);
+    }, [activeTeam.teamId, activeTeam.role, defaultTeamId, user]);
 
     const handleExerciseChange = (index: number, field: keyof Exercise, value: any) => {
         const newExercises = [...exercises];

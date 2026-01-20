@@ -1,5 +1,6 @@
 import { connectDB } from '@/lib/db/mongodb';
 import User from '@/models/User';
+import Team from '@/models/Team';
 import bcryptjs from 'bcryptjs';
 import { NextRequest, NextResponse } from 'next/server';
 import { signToken } from '@/lib/auth';
@@ -26,22 +27,56 @@ export async function POST(request: NextRequest) {
             name,
             email,
             password: hashedPassword,
-            role,
+            teams: [],
         });
+
+        let createdTeamId: string | null = null;
+
+        if (role === 'trainer') {
+            const generateInviteCode = () => Math.random().toString(36).substring(2, 8).toUpperCase();
+            let inviteCode = generateInviteCode();
+            let codeExists = await Team.findOne({ inviteCode });
+
+            while (codeExists) {
+                inviteCode = generateInviteCode();
+                codeExists = await Team.findOne({ inviteCode });
+            }
+
+            const team = await Team.create({
+                name: `${name}'s Team`,
+                description: '',
+                trainer: user._id,
+                inviteCode,
+                members: [user._id],
+                memberRoles: [{ user: user._id, role: 'trainer' }],
+            });
+
+            createdTeamId = team._id.toString();
+            user.teams.push(team._id);
+            await user.save();
+        }
+
+        const primaryRole = role === 'trainer' ? 'trainer' : 'member';
 
         // Generate JWT token
         const token = signToken({
             userId: user._id.toString(),
             email: user.email,
-            role: user.role,
+            role: primaryRole,
         });
 
         // Return user without password
         const { password: _, ...userWithoutPassword } = user.toObject();
+        const responseUser = {
+            ...userWithoutPassword,
+            role: primaryRole,
+            teams: user.teams,
+            createdTeamId,
+        };
 
         // Set token in cookie
         const response = NextResponse.json(
-            { message: 'User registered successfully', user: userWithoutPassword },
+            { message: 'User registered successfully', user: responseUser },
             { status: 201 }
         );
 

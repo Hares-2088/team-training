@@ -46,7 +46,7 @@ type ExerciseLog = {
 export default function LogWorkoutPage() {
     const params = useParams();
     const router = useRouter();
-    const { user } = useAuth();
+    const { user, activeTeam } = useAuth();
     const trainingId = params.id as string;
 
     const [training, setTraining] = useState<Training | null>(null);
@@ -54,12 +54,12 @@ export default function LogWorkoutPage() {
 
     // Redirect trainers away from logging
     useEffect(() => {
-        if (user && user.role === 'trainer') {
+        if (user && (activeTeam.role === 'trainer' || user?.role === 'trainer')) {
             router.push('/dashboard');
         }
-    }, [user, router]);
+    }, [user, router, activeTeam.role]);
 
-    if (user && user.role === 'trainer') {
+    if (user && (activeTeam.role === 'trainer' || user?.role === 'trainer')) {
         return null;
     }
     const [error, setError] = useState<string | null>(null);

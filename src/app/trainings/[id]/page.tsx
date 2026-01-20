@@ -29,7 +29,7 @@ type Training = {
 };
 
 export default function TrainingDetailPage() {
-    const { user } = useAuth();
+    const { user, activeTeam } = useAuth();
     const params = useParams();
     const router = useRouter();
     const id = params.id as string;
@@ -204,7 +204,7 @@ export default function TrainingDetailPage() {
                         </div>
 
                         {/* Action Buttons */}
-                        {(user?.role === 'trainer' || user?.role === 'coach') && (
+                        {((activeTeam.role || user?.role) === 'trainer' || (activeTeam.role || user?.role) === 'coach') && (
                             <div className="flex gap-3">
                                 <Link href={`/trainings/${id}/edit`} className="flex-1">
                                     <Button className="btn-primary w-full">
