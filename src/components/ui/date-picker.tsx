@@ -10,12 +10,18 @@ interface DatePickerProps extends Omit<React.InputHTMLAttributes<HTMLInputElemen
     onChange?: (value: string) => void
 }
 
+// Parse date string (YYYY-MM-DD) as local date, not UTC
+const parseLocalDate = (dateString: string): Date => {
+    const [year, month, day] = dateString.split('-').map(Number)
+    return new Date(year, month - 1, day)
+}
+
 const DatePicker = React.forwardRef<HTMLInputElement, DatePickerProps>(
     ({ className, value, onChange, ...props }, ref) => {
         const [open, setOpen] = React.useState(false)
 
         const displayDate = value
-            ? new Date(value).toLocaleDateString('en-US', {
+            ? parseLocalDate(value).toLocaleDateString('en-US', {
                 month: 'short',
                 day: 'numeric',
                 year: 'numeric',

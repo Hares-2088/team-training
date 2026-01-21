@@ -8,10 +8,16 @@ type CalendarProps = Omit<React.HTMLAttributes<HTMLDivElement>, 'onChange'> & {
     onChange?: (date: string) => void
 }
 
+// Parse date string (YYYY-MM-DD) as local date, not UTC
+const parseLocalDate = (dateString: string): Date => {
+    const [year, month, day] = dateString.split('-').map(Number)
+    return new Date(year, month - 1, day)
+}
+
 const Calendar = React.forwardRef<HTMLDivElement, CalendarProps>(
     ({ className, value, onChange, ...props }, ref) => {
         const [currentMonth, setCurrentMonth] = React.useState<Date>(
-            value ? new Date(value) : new Date()
+            value ? parseLocalDate(value) : new Date()
         )
 
         const getDaysInMonth = (date: Date) => {
@@ -24,7 +30,11 @@ const Calendar = React.forwardRef<HTMLDivElement, CalendarProps>(
 
         const handleDateClick = (day: number) => {
             const selectedDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day)
-            const dateString = selectedDate.toISOString().split('T')[0]
+            // Format as YYYY-MM-DD in local timezone (not UTC)
+            const year = selectedDate.getFullYear()
+            const month = String(selectedDate.getMonth() + 1).padStart(2, '0')
+            const dateStr = String(selectedDate.getDate()).padStart(2, '0')
+            const dateString = `${year}-${month}-${dateStr}`
             onChange?.(dateString)
         }
 
@@ -46,11 +56,11 @@ const Calendar = React.forwardRef<HTMLDivElement, CalendarProps>(
             year: 'numeric',
         })
 
-        const selectedDay = value ? new Date(value).getDate() : null
+        const selectedDay = value ? parseLocalDate(value).getDate() : null
         const isCurrentMonth =
             value &&
-            new Date(value).getMonth() === currentMonth.getMonth() &&
-            new Date(value).getFullYear() === currentMonth.getFullYear()
+            parseLocalDate(value).getMonth() === currentMonth.getMonth() &&
+            parseLocalDate(value).getFullYear() === currentMonth.getFullYear()
 
         return (
             <div

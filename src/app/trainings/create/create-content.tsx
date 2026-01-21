@@ -7,6 +7,7 @@ import { CreateTrainingForm } from '@/components/CreateTrainingForm';
 export default function CreateTrainingPageContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
+    const isPersonal = searchParams.get('personal') === 'true';
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [prefill, setPrefill] = useState<{ title?: string; description?: string; exercises?: any[] } | null>(null);
@@ -38,22 +39,33 @@ export default function CreateTrainingPageContent() {
             if (!data.teamId) {
                 throw new Error('Team is required');
             }
+            if (!data.scheduledDates || data.scheduledDates.length === 0) {
+                throw new Error('At least one date is required');
+            }
 
-            const response = await fetch('/api/trainings', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    title: data.title,
-                    description: data.description,
-                    scheduledDate: data.scheduledDate,
-                    exercises: data.exercises,
-                    team: data.teamId,
-                }),
-            });
+            // Create a training for each selected date
+            const createdTrainings = [];
+            for (const scheduledDate of data.scheduledDates) {
+                const response = await fetch('/api/trainings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        title: data.title,
+                        description: data.description,
+                        scheduledDate: scheduledDate,
+                        exercises: data.exercises,
+                        team: data.teamId,
+                        isPersonal: isPersonal,
+                    }),
+                });
 
-            if (!response.ok) {
-                const payload = await response.json();
-                throw new Error(payload.error || 'Failed to create training');
+                if (!response.ok) {
+                    const payload = await response.json();
+                    throw new Error(payload.error || `Failed to create training for ${scheduledDate}`);
+                }
+
+                const result = await response.json();
+                createdTrainings.push(result);
             }
 
             router.push('/trainings');
@@ -73,6 +85,17 @@ export default function CreateTrainingPageContent() {
                     {error}
                 </div>
             )}
+
+            <div className="mb-6">
+                <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
+                    {isPersonal ? 'Create Personal Training' : 'Create Team Training'}
+                </h1>
+                <p className="text-slate-600 dark:text-slate-400 mt-2">
+                    {isPersonal
+                        ? 'Create a personal training for yourself. Only you can see this training.'
+                        : 'Create a training for your team. All team members will see this.'}
+                </p>
+            </div>
 
             <CreateTrainingForm
                 defaultTeamId=""

@@ -19,6 +19,7 @@ type Training = {
     status: 'scheduled' | 'completed' | 'cancelled';
     team?: string;
     allMembersCompleted?: boolean;
+    isPersonal?: boolean;
 };
 
 type WorkoutLog = {
@@ -39,7 +40,7 @@ export default function TrainingsPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const effectiveRole = activeTeam.role || user?.role || null;
-    const [filter, setFilter] = useState<'all' | 'scheduled' | 'completed'>('all');
+    const [filter, setFilter] = useState<'all' | 'scheduled' | 'completed' | 'personal'>('all');
     const [deleteDialog, setDeleteDialog] = useState<{ isOpen: boolean; trainingId: string; title: string }>({
         isOpen: false,
         trainingId: '',
@@ -125,6 +126,7 @@ export default function TrainingsPage() {
 
         if (filter === 'completed') return isCompleted;
         if (filter === 'scheduled') return !isCompleted;
+        if (filter === 'personal') return training.isPersonal === true;
         return training.status === filter;
     });
 
@@ -179,6 +181,11 @@ export default function TrainingsPage() {
                                 <Button size="lg" className="w-full sm:w-auto">Create Training</Button>
                             </Link>
                         )}
+                        {(effectiveRole === 'trainer' || effectiveRole === 'coach' || effectiveRole === 'member') && (
+                            <Link href="/trainings/create?personal=true" className="sm:flex-none">
+                                <Button variant="outline" size="lg" className="w-full sm:w-auto">Create Personal Training</Button>
+                            </Link>
+                        )}
                         <Link href="/library" className="sm:flex-none">
                             <Button variant="outline" size="lg" className="w-full sm:w-auto">Workouts Library</Button>
                         </Link>
@@ -204,6 +211,12 @@ export default function TrainingsPage() {
                         onClick={() => setFilter('completed')}
                     >
                         Completed
+                    </Button>
+                    <Button
+                        variant={filter === 'personal' ? 'default' : 'outline'}
+                        onClick={() => setFilter('personal')}
+                    >
+                        Personal
                     </Button>
                 </div>
 

@@ -46,14 +46,22 @@ export async function GET(request: NextRequest) {
         const isTrainer = String(team.trainer) === decoded.userId;
         const memberRole = (team.memberRoles || []).find((m: any) => String(m.user) === decoded.userId)?.role;
         const isCoach = memberRole === 'coach';
+        const isMember = team.members.some((m: any) => String(m?._id ?? m) === decoded.userId);
 
-        // Trainers and coaches see only team plan trainings (not personal quick-logs)
-        // Members see all trainings including their own personal ones
+        // Trainers see team plan trainings (no personal) + their own personal trainings
+        // Coaches and members see team plan trainings + their own personal trainings
         const query: any = { team: activeTeamId };
-        if (isTrainer || isCoach) {
-            query.$and = [
+        if (isTrainer) {
+            // Trainers: exclude personal trainings from others
+            query.$or = [
                 { isPersonal: { $ne: true } },
-                { title: { $not: /\(Personal\)$/ } },
+                { createdBy: decoded.userId }
+            ];
+        } else if (isCoach || isMember) {
+            // Coaches/members: exclude personal trainings from others
+            query.$or = [
+                { isPersonal: { $ne: true } },
+                { createdBy: decoded.userId }
             ];
         }
 
@@ -94,23 +102,31 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        // Verify permissions: trainer of team OR coach and member of team
+        // Verify permissions: trainer of team OR coach/member and member of team
         const team = await Team.findById(body.team).populate('members', '_id');
         if (!team) {
             return NextResponse.json({ error: 'Team not found' }, { status: 404 });
         }
 
-        // Enforce active team selection if present
-        const activeTeamId = request.cookies.get('active-team')?.value;
-        if (activeTeamId && String(activeTeamId) !== String(body.team)) {
-            return NextResponse.json({ error: 'Cannot create training for non-active team' }, { status: 403 });
-        }
-
         const isTrainer = team.trainer.toString() === decoded.userId;
         const memberRole = (team.memberRoles || []).find((m: any) => String(m.user) === decoded.userId)?.role;
         const isCoachMember = memberRole === 'coach';
-        if (!isTrainer && !isCoachMember) {
-            return NextResponse.json({ error: 'Unauthorized - only team trainer or coach can create trainings' }, { status: 403 });
+        const isMember = team.members.some((m: any) => String(m?._id ?? m) === decoded.userId);
+
+        // Team plan trainings: only trainer or coach can create
+        // Personal trainings: trainer, coach, or member can create for themselves
+        const isPersonal = body.isPersonal === true;
+
+        if (isPersonal) {
+            // Personal trainings: everyone (trainer, coach, member) can create for themselves
+            if (!isTrainer && !isCoachMember && !isMember) {
+                return NextResponse.json({ error: 'Unauthorized - you must be part of this team' }, { status: 403 });
+            }
+        } else {
+            // Team plan trainings: only trainer or coach can create
+            if (!isTrainer && !isCoachMember) {
+                return NextResponse.json({ error: 'Unauthorized - only team trainer or coach can create trainings' }, { status: 403 });
+            }
         }
 
         const training = await Training.create({
@@ -120,6 +136,8 @@ export async function POST(request: NextRequest) {
             team: body.team,
             scheduledDate: new Date(body.scheduledDate),
             status: body.status || 'scheduled',
+            isPersonal: isPersonal,
+            createdBy: isPersonal ? decoded.userId : undefined,
         });
 
         return NextResponse.json({ training }, { status: 201 });

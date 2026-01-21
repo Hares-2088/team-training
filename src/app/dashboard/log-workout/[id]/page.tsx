@@ -51,17 +51,6 @@ export default function LogWorkoutPage() {
 
     const [training, setTraining] = useState<Training | null>(null);
     const [isLoading, setIsLoading] = useState(true);
-
-    // Redirect trainers away from logging
-    useEffect(() => {
-        if (user && (activeTeam.role === 'trainer' || user?.role === 'trainer')) {
-            router.push('/dashboard');
-        }
-    }, [user, router, activeTeam.role]);
-
-    if (user && (activeTeam.role === 'trainer' || user?.role === 'trainer')) {
-        return null;
-    }
     const [error, setError] = useState<string | null>(null);
     const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
     const [currentSet, setCurrentSet] = useState(1);

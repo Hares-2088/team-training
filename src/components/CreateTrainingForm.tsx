@@ -10,6 +10,12 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 
+// Parse date string (YYYY-MM-DD) as local date, not UTC
+const parseLocalDate = (dateString: string): Date => {
+    const [year, month, day] = dateString.split('-').map(Number)
+    return new Date(year, month - 1, day)
+}
+
 interface Exercise {
     name: string;
     sets: number;
@@ -26,7 +32,7 @@ interface CreateTrainingFormProps {
     onSubmit: (data: {
         title: string;
         description: string;
-        scheduledDate: string;
+        scheduledDates: string[];
         exercises: Exercise[];
         teamId: string;
     }) => void;
@@ -44,7 +50,7 @@ export function CreateTrainingForm({
     const { user, activeTeam } = useAuth();
     const [title, setTitle] = useState(initialTitle);
     const [description, setDescription] = useState(initialDescription);
-    const [scheduledDate, setScheduledDate] = useState('');
+    const [scheduledDates, setScheduledDates] = useState<string[]>([]);
     const [teamId, setTeamId] = useState(defaultTeamId);
     const [exercises, setExercises] = useState<Exercise[]>(
         initialExercises && initialExercises.length > 0
@@ -59,25 +65,19 @@ export function CreateTrainingForm({
                 const res = await fetch('/api/teams');
                 const teamsData = await res.json();
                 // Filter to teams user can create trainings for:
-                // Trainers: their owned teams; Coaches: teams where they are a member.
+                // Trainers: their owned teams; Coaches/Members: teams where they are a member.
                 const filtered = Array.isArray(teamsData)
                     ? teamsData.filter((t: any) => {
                         if (!user) return false;
-                        if (activeTeam.teamId) {
-                            return t._id === activeTeam.teamId;
-                        }
-                        if (activeTeam.role === 'trainer' || user.role === 'trainer') {
-                            return (t.trainer?._id || String(t.trainer)) === user._id;
-                        }
-                        if (activeTeam.role === 'coach' || user.role === 'coach') {
-                            return Array.isArray(t.members) && t.members.some((m: any) => (m?._id || String(m)) === user._id);
-                        }
-                        return false;
+                        // Show all teams where user is trainer or member
+                        const isTrainer = (t.trainer?._id || String(t.trainer)) === user._id;
+                        const isMember = Array.isArray(t.members) && t.members.some((m: any) => (m?._id || String(m)) === user._id);
+                        return isTrainer || isMember;
                     })
                     : [];
                 setTeams(filtered);
                 // Prefer active team, else defaultTeamId, else first allowed team
-                if (activeTeam.teamId) {
+                if (activeTeam.teamId && filtered.some((t) => t._id === activeTeam.teamId)) {
                     setTeamId(activeTeam.teamId);
                 } else if (defaultTeamId) {
                     setTeamId(defaultTeamId);
@@ -90,6 +90,16 @@ export function CreateTrainingForm({
         };
         fetchData();
     }, [activeTeam.teamId, activeTeam.role, defaultTeamId, user]);
+
+    const handleDateChange = (date: string) => {
+        setScheduledDates((prev) => {
+            if (prev.includes(date)) {
+                return prev.filter((d) => d !== date);
+            } else {
+                return [...prev, date].sort();
+            }
+        });
+    };
 
     const handleExerciseChange = (index: number, field: keyof Exercise, value: any) => {
         const newExercises = [...exercises];
@@ -107,7 +117,11 @@ export function CreateTrainingForm({
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        onSubmit({ title, description, scheduledDate, exercises, teamId });
+        if (scheduledDates.length === 0) {
+            alert('Please select at least one date');
+            return;
+        }
+        onSubmit({ title, description, scheduledDates, exercises, teamId });
     };
 
     return (
@@ -158,13 +172,42 @@ export function CreateTrainingForm({
                     </div>
 
                     <div>
-                        <Label htmlFor="date">Scheduled Date</Label>
-                        <DatePicker
-                            id="date"
-                            value={scheduledDate}
-                            onChange={setScheduledDate}
-                            required
-                        />
+                        <Label>Scheduled Dates (select multiple)</Label>
+                        <div className="mt-2">
+                            <DatePicker
+                                id="date"
+                                value={scheduledDates[0] || ''}
+                                onChange={handleDateChange}
+                            />
+                        </div>
+                        {scheduledDates.length > 0 && (
+                            <div className="mt-3 p-3 bg-slate-100 dark:bg-slate-900 rounded-lg">
+                                <p className="text-sm font-medium mb-2 text-slate-700 dark:text-slate-300">
+                                    Selected Dates ({scheduledDates.length}):
+                                </p>
+                                <div className="space-y-1">
+                                    {scheduledDates.map((date) => (
+                                        <div key={date} className="flex justify-between items-center text-sm">
+                                            <span className="text-slate-700 dark:text-slate-300">
+                                                {parseLocalDate(date).toLocaleDateString('en-US', {
+                                                    weekday: 'short',
+                                                    year: 'numeric',
+                                                    month: 'short',
+                                                    day: 'numeric',
+                                                })}
+                                            </span>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleDateChange(date)}
+                                                className="text-xs text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                                            >
+                                                Remove
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     <div className="border-t pt-6">

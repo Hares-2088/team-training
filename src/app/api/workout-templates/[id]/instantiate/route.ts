@@ -17,22 +17,29 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
         const { id } = await params;
 
-        // Only members and coaches can instantiate for quick logging
-        if (decoded.role === 'trainer') {
-            return NextResponse.json({ error: 'Trainers should add templates to team plan instead.' }, { status: 403 });
-        }
-
+        // All users (members, coaches, trainers) can instantiate for quick logging
         // Use active team if available, otherwise find user's first team
         const activeTeamId = request.cookies.get('active-team')?.value;
         let userTeam;
 
         if (activeTeamId) {
-            userTeam = await Team.findOne({ _id: activeTeamId, members: decoded.userId });
+            // For trainers, find the active team they're training
+            // For members/coaches, find the active team they're in
+            const membershipQuery = decoded.role === 'trainer'
+                ? { _id: activeTeamId, trainer: decoded.userId }
+                : { _id: activeTeamId, members: decoded.userId };
+
+            userTeam = await Team.findOne(membershipQuery);
             if (!userTeam) {
                 return NextResponse.json({ error: 'Active team not found or unauthorized' }, { status: 403 });
             }
         } else {
-            const teams = await Team.find({ members: decoded.userId });
+            // Find first team where user belongs
+            const membershipQuery = decoded.role === 'trainer'
+                ? { trainer: decoded.userId }
+                : { members: decoded.userId };
+
+            const teams = await Team.find(membershipQuery);
             if (!teams || teams.length === 0) {
                 return NextResponse.json({ error: 'No team found for user' }, { status: 400 });
             }
