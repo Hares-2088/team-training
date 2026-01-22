@@ -23,7 +23,6 @@ type Team = {
     };
     members?: Array<{ _id: string }>;
     memberRoles?: Array<{ user: string; role: 'trainer' | 'member' | 'coach' }>;
-    trainer?: { _id: string };
 };
 
 export default function TeamsPage() {
