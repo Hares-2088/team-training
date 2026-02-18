@@ -50,11 +50,6 @@ export async function POST(
             return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
         }
 
-        // Trainers should not log workouts
-        if (isTrainer) {
-            return NextResponse.json({ error: 'Trainers cannot log workouts' }, { status: 403 });
-        }
-
         const workoutLog = await WorkoutLog.create({
             training: trainingId,
             member: currentUser.userId,

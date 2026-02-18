@@ -30,7 +30,7 @@ export async function GET(
             return NextResponse.json({ error: 'Training ID is required' }, { status: 400 });
         }
 
-        const training = await Training.findById(id);
+        const training = await Training.findById(id).populate('team', 'name');
 
         if (!training) {
             return NextResponse.json({ error: 'Training not found' }, { status: 404 });

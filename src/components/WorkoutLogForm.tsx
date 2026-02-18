@@ -5,12 +5,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { NumberInput } from '@/components/ui/number-input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useState } from 'react';
 
 interface WorkoutExercise {
     exerciseName: string;
     setNumber: number;
     weight: number;
+    weightUnit: 'lbs' | 'kg' | 'bodyweight';
     reps: number;
     notes: string;
 }
@@ -37,6 +39,15 @@ export function WorkoutLogForm({
         setWorkoutData(newData);
     };
 
+    const updateAllWeightUnits = (unit: 'lbs' | 'kg' | 'bodyweight') => {
+        setDefaultWeightUnit(unit);
+        const newData = [...workoutData];
+        newData.forEach(item => {
+            item.weightUnit = unit;
+        });
+        setWorkoutData(newData);
+    };
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         onSubmit({ exercises: workoutData, notes });
@@ -51,6 +62,7 @@ export function WorkoutLogForm({
                     exerciseName: ex.name,
                     setNumber: setIdx + 1,
                     weight: 0,
+                    weightUnit: defaultWeightUnit,
                     reps: 0,
                     notes: '',
                 }))
@@ -66,6 +78,23 @@ export function WorkoutLogForm({
             </CardHeader>
             <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-6">
+                    {/* Global Weight Unit Setting */}
+                    <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-lg">
+                        <Label className="text-sm font-medium">
+                            Weight Unit (applied to all exercises)
+                        </Label>
+                        <Select value={defaultWeightUnit} onValueChange={updateAllWeightUnits}>
+                            <SelectTrigger className="mt-2">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="lbs">Pounds (lbs)</SelectItem>
+                                <SelectItem value="kg">Kilograms (kg)</SelectItem>
+                                <SelectItem value="bodyweight">Bodyweight</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
                     <div className="space-y-4">
                         {workoutData.map((item, index) => (
                             <div
@@ -78,17 +107,23 @@ export function WorkoutLogForm({
                                 <div className="grid grid-cols-3 gap-3">
                                     <div>
                                         <Label htmlFor={`weight-${index}`} className="text-xs">
-                                            Weight (lbs)
+                                            {item.weightUnit === 'bodyweight' ? 'Bodyweight' : `Weight (${item.weightUnit})`}
                                         </Label>
-                                        <NumberInput
-                                            id={`weight-${index}`}
-                                            value={item.weight || 0}
-                                            onChange={(value) => handleExerciseChange(index, 'weight', value)}
-                                            min={0}
-                                            step={5}
-                                            placeholder="0"
-                                            className="mt-1"
-                                        />
+                                        {item.weightUnit === 'bodyweight' ? (
+                                            <div className="mt-1 p-3 bg-slate-100 dark:bg-slate-800 rounded-md text-center text-sm font-medium text-slate-600 dark:text-slate-400">
+                                                Bodyweight Exercise
+                                            </div>
+                                        ) : (
+                                            <NumberInput
+                                                id={`weight-${index}`}
+                                                value={item.weight || 0}
+                                                onChange={(value) => handleExerciseChange(index, 'weight', value)}
+                                                min={0}
+                                                step={item.weightUnit === 'kg' ? 2.5 : 5}
+                                                placeholder="0"
+                                                className="mt-1"
+                                            />
+                                        )}
                                     </div>
                                     <div>
                                         <Label htmlFor={`reps-${index}`} className="text-xs">

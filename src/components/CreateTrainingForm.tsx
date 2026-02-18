@@ -5,8 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { NumberInput } from '@/components/ui/number-input';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DatePicker } from '@/components/ui/date-picker';
+import { Combobox, ComboboxOption } from '@/components/ui/combobox';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -58,12 +60,14 @@ export function CreateTrainingForm({
             : [{ name: '', sets: 3, reps: '10', restTime: 90, notes: '' }]
     );
     const [teams, setTeams] = useState<Array<{ _id: string; name: string; trainer?: { _id: string }; members?: Array<{ _id: string }> }>>([]);
+    const [exerciseOptions, setExerciseOptions] = useState<ComboboxOption[]>([]);
 
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const res = await fetch('/api/teams');
-                const teamsData = await res.json();
+                const teamsRes = await fetch('/api/teams');
+                const teamsData = await teamsRes.json();
+
                 // Filter to teams user can create trainings for:
                 // Trainers: their owned teams; Coaches/Members: teams where they are a member.
                 const filtered = Array.isArray(teamsData)
@@ -76,6 +80,7 @@ export function CreateTrainingForm({
                     })
                     : [];
                 setTeams(filtered);
+
                 // Prefer active team, else defaultTeamId, else first allowed team
                 if (activeTeam.teamId && filtered.some((t) => t._id === activeTeam.teamId)) {
                     setTeamId(activeTeam.teamId);
@@ -85,11 +90,34 @@ export function CreateTrainingForm({
                     setTeamId(filtered[0]._id);
                 }
             } catch (error) {
-                console.error('Error fetching teams:', error);
+                console.error('Error fetching data:', error);
             }
         };
         fetchData();
     }, [activeTeam.teamId, activeTeam.role, defaultTeamId, user]);
+
+    // Fetch exercises when teamId changes
+    useEffect(() => {
+        const fetchExercises = async () => {
+            if (!teamId) return;
+
+            try {
+                const exercisesRes = await fetch(`/api/exercises?teamId=${teamId}`);
+                const exercisesData = await exercisesRes.json();
+
+                // Set exercise options
+                if (Array.isArray(exercisesData)) {
+                    setExerciseOptions(exercisesData.map((ex: any) => ({
+                        value: ex.name,
+                        label: ex.name
+                    })));
+                }
+            } catch (error) {
+                console.error('Error fetching exercises:', error);
+            }
+        };
+        fetchExercises();
+    }, [teamId]);
 
     const handleDateChange = (date: string) => {
         setScheduledDates((prev) => {
@@ -105,6 +133,26 @@ export function CreateTrainingForm({
         const newExercises = [...exercises];
         newExercises[index] = { ...newExercises[index], [field]: value };
         setExercises(newExercises);
+    };
+
+    const handleCreateNewExercise = async (exerciseName: string, index: number) => {
+        try {
+            const res = await fetch('/api/exercises', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: exerciseName, teamId }),
+            });
+
+            if (res.ok) {
+                const newExercise = await res.json();
+                // Add to options
+                setExerciseOptions(prev => [...prev, { value: newExercise.name, label: newExercise.name }]);
+                // Update exercise name
+                handleExerciseChange(index, 'name', newExercise.name);
+            }
+        } catch (error) {
+            console.error('Error creating exercise:', error);
+        }
     };
 
     const addExercise = () => {
@@ -162,12 +210,13 @@ export function CreateTrainingForm({
 
                     <div>
                         <Label htmlFor="description">Description</Label>
-                        <Input
+                        <Textarea
                             id="description"
                             placeholder="Brief description of the training"
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
                             className="mt-2"
+                            rows={6}
                         />
                     </div>
 
@@ -221,12 +270,14 @@ export function CreateTrainingForm({
                                             <Label htmlFor={`ex-name-${index}`} className="text-xs">
                                                 Exercise Name
                                             </Label>
-                                            <Input
-                                                id={`ex-name-${index}`}
-                                                placeholder="e.g., Bench Press"
+                                            <Combobox
+                                                options={exerciseOptions}
                                                 value={ex.name}
-                                                onChange={(e) => handleExerciseChange(index, 'name', e.target.value)}
-                                                required
+                                                onChange={(value) => handleExerciseChange(index, 'name', value)}
+                                                onCreateNew={(newName) => handleCreateNewExercise(newName, index)}
+                                                placeholder="Select or create exercise..."
+                                                emptyText="No exercises found."
+                                                searchPlaceholder="Search exercises..."
                                                 className="mt-1"
                                             />
                                         </div>

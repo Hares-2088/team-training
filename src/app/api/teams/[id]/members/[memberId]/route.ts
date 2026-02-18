@@ -101,8 +101,8 @@ export async function PATCH(
             return NextResponse.json({ error: 'User is not a member of this team' }, { status: 400 });
         }
 
-        // Update memberRoles entry
-        const updatedTeam = await Team.findOneAndUpdate(
+        // Update memberRoles entry - first try to update existing role
+        let updatedTeam = await Team.findOneAndUpdate(
             { _id: id, 'memberRoles.user': memberId },
             { $set: { 'memberRoles.$.role': role } },
             { new: true }
@@ -110,8 +110,19 @@ export async function PATCH(
             .populate('trainer', 'name email')
             .populate('members', 'name email');
 
+        // If user doesn't have a role entry yet, create one
         if (!updatedTeam) {
-            return NextResponse.json({ error: 'User not found in team' }, { status: 404 });
+            updatedTeam = await Team.findByIdAndUpdate(
+                id,
+                { $push: { memberRoles: { user: memberId, role: role } } },
+                { new: true }
+            )
+                .populate('trainer', 'name email')
+                .populate('members', 'name email');
+        }
+
+        if (!updatedTeam) {
+            return NextResponse.json({ error: 'Failed to update member role' }, { status: 500 });
         }
 
         const shaped = mapTeamWithMemberRoles(updatedTeam);

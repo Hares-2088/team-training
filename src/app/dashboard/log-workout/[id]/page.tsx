@@ -7,10 +7,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Navbar } from '@/components/Navbar';
 import { NumberInput } from '@/components/ui/number-input';
 import { useAuth } from '@/contexts/AuthContext';
-import { ChevronLeft, ChevronRight, Clock, CheckCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Clock, CheckCircle } from 'lucide-react';
 
 type Exercise = {
     name: string;
@@ -37,6 +38,7 @@ type ExerciseLog = {
     logs: Array<{
         set: number;
         weight: number;
+        weightUnit: 'lbs' | 'kg' | 'bodyweight';
         reps: number;
         rpe: number;
         notes: string;
@@ -55,6 +57,8 @@ export default function LogWorkoutPage() {
     const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
     const [currentSet, setCurrentSet] = useState(1);
     const [exerciseLogs, setExerciseLogs] = useState<ExerciseLog[]>([]);
+    const [reorderedExercises, setReorderedExercises] = useState<Exercise[]>([]);
+    const [defaultWeightUnit, setDefaultWeightUnit] = useState<'lbs' | 'kg' | 'bodyweight'>('lbs');
     const [isWorkoutStarted, setIsWorkoutStarted] = useState(false);
     const [isWorkoutCompleted, setIsWorkoutCompleted] = useState(false);
     const [workoutStartTime, setWorkoutStartTime] = useState<Date | null>(null);
@@ -77,6 +81,9 @@ export default function LogWorkoutPage() {
                 const data = await res.json();
                 setTraining(data.training);
 
+                // Initialize reordered exercises with original order
+                setReorderedExercises([...data.training.exercises]);
+
                 // Initialize exercise logs
                 const logs = data.training.exercises.map((ex: Exercise) => ({
                     name: ex.name,
@@ -88,6 +95,7 @@ export default function LogWorkoutPage() {
                         .map((_, i) => ({
                             set: i + 1,
                             weight: 0,
+                            weightUnit: defaultWeightUnit,
                             reps: 0,
                             rpe: 5,
                             notes: '',
@@ -133,7 +141,40 @@ export default function LogWorkoutPage() {
         return () => clearInterval(interval);
     }, [isWorkoutStarted, isWorkoutCompleted]);
 
+    const moveExerciseUp = (index: number) => {
+        if (index === 0) return;
+        const newOrder = [...reorderedExercises];
+        [newOrder[index - 1], newOrder[index]] = [newOrder[index], newOrder[index - 1]];
+        setReorderedExercises(newOrder);
+    };
+
+    const moveExerciseDown = (index: number) => {
+        if (index === reorderedExercises.length - 1) return;
+        const newOrder = [...reorderedExercises];
+        [newOrder[index], newOrder[index + 1]] = [newOrder[index + 1], newOrder[index]];
+        setReorderedExercises(newOrder);
+    };
+
     const startWorkout = () => {
+        // Initialize exercise logs with reordered exercises
+        const logs = reorderedExercises.map((ex: Exercise) => ({
+            name: ex.name,
+            targetSets: ex.sets,
+            targetReps: ex.reps,
+            restTime: ex.restTime || 90,
+            logs: Array(ex.sets)
+                .fill(null)
+                .map((_, i) => ({
+                    set: i + 1,
+                    weight: 0,
+                    weightUnit: defaultWeightUnit,
+                    reps: 0,
+                    rpe: 5,
+                    notes: '',
+                })),
+        }));
+        setExerciseLogs(logs);
+
         setIsWorkoutStarted(true);
         setWorkoutStartTime(new Date());
     };
@@ -148,6 +189,7 @@ export default function LogWorkoutPage() {
                 exerciseName: exercise.name,
                 setNumber: log.set,
                 weight: log.weight,
+                weightUnit: log.weightUnit,
                 reps: log.reps,
                 rpe: log.rpe,
                 notes: log.notes,
@@ -181,11 +223,22 @@ export default function LogWorkoutPage() {
     const updateExerciseLog = (
         exerciseIndex: number,
         setNumber: number,
-        field: 'weight' | 'reps' | 'rpe' | 'notes',
+        field: 'weight' | 'weightUnit' | 'reps' | 'rpe' | 'notes',
         value: number | string
     ) => {
         const newLogs = [...exerciseLogs];
         (newLogs[exerciseIndex].logs[setNumber - 1] as any)[field] = value;
+        setExerciseLogs(newLogs);
+    };
+
+    const updateAllWeightUnits = (unit: 'lbs' | 'kg' | 'bodyweight') => {
+        setDefaultWeightUnit(unit);
+        const newLogs = [...exerciseLogs];
+        newLogs.forEach(exercise => {
+            exercise.logs.forEach(log => {
+                log.weightUnit = unit;
+            });
+        });
         setExerciseLogs(newLogs);
     };
 
@@ -269,7 +322,7 @@ export default function LogWorkoutPage() {
                                                     .filter((log) => log.weight > 0 || log.reps > 0)
                                                     .map((log, i) => (
                                                         <p key={i}>
-                                                            Set {log.set}: {log.weight}lbs × {log.reps} reps (RPE {log.rpe}/10)
+                                                            Set {log.set}: {log.weightUnit === 'bodyweight' ? 'Bodyweight' : `${log.weight}${log.weightUnit}`} × {log.reps} reps (RPE {log.rpe}/10)
                                                         </p>
                                                     ))}
                                             </div>
@@ -343,17 +396,49 @@ export default function LogWorkoutPage() {
 
                             {/* Exercises Overview */}
                             <div>
-                                <Label className="text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">
-                                    Exercises
-                                </Label>
-                                <div className="space-y-2 mt-3">
-                                    {training.exercises.map((ex, idx) => (
-                                        <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900 rounded-lg">
-                                            <div>
-                                                <p className="font-medium text-slate-900 dark:text-white">{ex.name}</p>
-                                                <p className="text-sm text-slate-600 dark:text-slate-400">
-                                                    {ex.sets} sets × {ex.reps} reps
-                                                </p>
+                                <div className="flex items-center justify-between mb-3">
+                                    <Label className="text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                                        Exercises
+                                    </Label>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                                        Reorder to fit your preference
+                                    </p>
+                                </div>
+                                <div className="space-y-2">
+                                    {reorderedExercises.map((ex, idx) => (
+                                        <div key={`${ex.name}-${idx}`} className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-900 rounded-lg">
+                                            <div className="flex flex-col gap-1">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => moveExerciseUp(idx)}
+                                                    disabled={idx === 0}
+                                                    className="h-6 w-6 p-0 hover:bg-slate-200 dark:hover:bg-slate-800"
+                                                >
+                                                    <ChevronUp className="h-3 w-3" />
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => moveExerciseDown(idx)}
+                                                    disabled={idx === reorderedExercises.length - 1}
+                                                    className="h-6 w-6 p-0 hover:bg-slate-200 dark:hover:bg-slate-800"
+                                                >
+                                                    <ChevronDown className="h-3 w-3" />
+                                                </Button>
+                                            </div>
+                                            <div className="flex-1">
+                                                <div className="flex items-center justify-between">
+                                                    <div>
+                                                        <p className="font-medium text-slate-900 dark:text-white">{ex.name}</p>
+                                                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                                                            {ex.sets} sets × {ex.reps} reps
+                                                        </p>
+                                                    </div>
+                                                    <div className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                                                        #{idx + 1}
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     ))}
@@ -427,35 +512,60 @@ export default function LogWorkoutPage() {
 
                     <CardContent className="space-y-6">
                         {/* Logging Form */}
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <Label htmlFor="weight" className="text-xs">
-                                    Weight (lbs)
+                        <div className="space-y-4">
+                            {/* Weight Unit Global Setting */}
+                            <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-lg">
+                                <Label className="text-sm font-medium">
+                                    Weight Unit (applied to all sets)
                                 </Label>
-                                <NumberInput
-                                    id="weight"
-                                    value={currentSetLog.weight}
-                                    onChange={(value) =>
-                                        updateExerciseLog(currentExerciseIndex, currentSet, 'weight', value)
-                                    }
-                                    min={0}
-                                    step={5}
-                                    className="mt-2"
-                                />
+                                <Select value={defaultWeightUnit} onValueChange={updateAllWeightUnits}>
+                                    <SelectTrigger className="mt-2">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="lbs">Pounds (lbs)</SelectItem>
+                                        <SelectItem value="kg">Kilograms (kg)</SelectItem>
+                                        <SelectItem value="bodyweight">Bodyweight</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
-                            <div>
-                                <Label htmlFor="reps" className="text-xs">
-                                    Reps
-                                </Label>
-                                <NumberInput
-                                    id="reps"
-                                    value={currentSetLog.reps}
-                                    onChange={(value) =>
-                                        updateExerciseLog(currentExerciseIndex, currentSet, 'reps', value)
-                                    }
-                                    min={0}
-                                    className="mt-2"
-                                />
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <Label htmlFor="weight" className="text-xs">
+                                        {currentSetLog.weightUnit === 'bodyweight' ? 'Bodyweight' : `Weight (${currentSetLog.weightUnit})`}
+                                    </Label>
+                                    {currentSetLog.weightUnit === 'bodyweight' ? (
+                                        <div className="mt-2 p-3 bg-slate-100 dark:bg-slate-800 rounded-md text-center text-sm font-medium text-slate-600 dark:text-slate-400">
+                                            Bodyweight Exercise
+                                        </div>
+                                    ) : (
+                                        <NumberInput
+                                            id="weight"
+                                            value={currentSetLog.weight}
+                                            onChange={(value) =>
+                                                updateExerciseLog(currentExerciseIndex, currentSet, 'weight', value)
+                                            }
+                                            min={0}
+                                            step={currentSetLog.weightUnit === 'kg' ? 2.5 : 5}
+                                            className="mt-2"
+                                        />
+                                    )}
+                                </div>
+                                <div>
+                                    <Label htmlFor="reps" className="text-xs">
+                                        Reps
+                                    </Label>
+                                    <NumberInput
+                                        id="reps"
+                                        value={currentSetLog.reps}
+                                        onChange={(value) =>
+                                            updateExerciseLog(currentExerciseIndex, currentSet, 'reps', value)
+                                        }
+                                        min={0}
+                                        className="mt-2"
+                                    />
+                                </div>
                             </div>
                         </div>
 
@@ -525,7 +635,10 @@ export default function LogWorkoutPage() {
                 <div className="flex gap-3">
                     <Button
                         variant="outline"
-                        onClick={() => setCurrentExerciseIndex(Math.max(0, currentExerciseIndex - 1))}
+                        onClick={() => {
+                            setCurrentExerciseIndex(Math.max(0, currentExerciseIndex - 1));
+                            setCurrentSet(1);
+                        }}
                         disabled={currentExerciseIndex === 0}
                         className="flex-1"
                     >

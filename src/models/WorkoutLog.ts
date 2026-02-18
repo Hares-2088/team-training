@@ -5,6 +5,7 @@ const exerciseSchema = new mongoose.Schema(
         exerciseName: { type: String, required: true },
         setNumber: { type: Number, required: true },
         weight: { type: Number, required: true },
+        weightUnit: { type: String, enum: ['lbs', 'kg', 'bodyweight'], default: 'lbs' },
         reps: { type: Number, required: true },
         rpe: { type: Number },
         notes: { type: String },

@@ -22,6 +22,7 @@ type WorkoutLog = {
         exerciseName: string;
         setNumber: number;
         weight: number;
+        weightUnit?: 'lbs' | 'kg' | 'bodyweight';
         reps: number;
         rpe?: number;
         notes?: string;
@@ -73,7 +74,11 @@ export default function MyTrainingsPage() {
     };
 
     const getTotalVolume = (exercises: WorkoutLog['exercises']) => {
-        return exercises.reduce((total, ex) => total + (ex.weight * ex.reps), 0);
+        return exercises.reduce((total, ex) => {
+            // Don't count bodyweight exercises in volume calculation
+            if (ex.weightUnit === 'bodyweight') return total;
+            return total + (ex.weight * ex.reps);
+        }, 0);
     };
 
     return (

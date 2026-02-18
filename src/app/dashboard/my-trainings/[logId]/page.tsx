@@ -13,6 +13,7 @@ type Exercise = {
     exerciseName: string;
     setNumber: number;
     weight: number;
+    weightUnit?: 'lbs' | 'kg' | 'bodyweight';
     reps: number;
     rpe?: number;
     notes?: string;
@@ -107,7 +108,11 @@ export default function WorkoutDetailPage({
     };
 
     const getTotalVolume = (exercises: Exercise[]) => {
-        return exercises.reduce((total, ex) => total + (ex.weight * ex.reps), 0);
+        return exercises.reduce((total, ex) => {
+            // Don't count bodyweight exercises in volume calculation
+            if (ex.weightUnit === 'bodyweight') return total;
+            return total + (ex.weight * ex.reps);
+        }, 0);
     };
 
     const getAverageRPE = (exercises: Exercise[]) => {
@@ -212,7 +217,7 @@ export default function WorkoutDetailPage({
                                 {totalVolume.toLocaleString()}
                             </p>
                             <p className="text-sm text-slate-600 dark:text-slate-400">
-                                Volume (kg)
+                                Total Volume
                             </p>
                         </CardContent>
                     </Card>
@@ -262,7 +267,7 @@ export default function WorkoutDetailPage({
                                                     Set
                                                 </th>
                                                 <th className="text-left py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300">
-                                                    Weight (kg)
+                                                    Weight
                                                 </th>
                                                 <th className="text-left py-3 px-4 text-sm font-semibold text-slate-700 dark:text-slate-300">
                                                     Reps
@@ -288,7 +293,7 @@ export default function WorkoutDetailPage({
                                                         {set.setNumber}
                                                     </td>
                                                     <td className="py-3 px-4 text-slate-900 dark:text-slate-100">
-                                                        {set.weight}
+                                                        {set.weightUnit === 'bodyweight' ? 'Bodyweight' : `${set.weight}${set.weightUnit || 'lbs'}`}
                                                     </td>
                                                     <td className="py-3 px-4 text-slate-900 dark:text-slate-100">
                                                         {set.reps}
@@ -297,7 +302,7 @@ export default function WorkoutDetailPage({
                                                         {set.rpe || '-'}
                                                     </td>
                                                     <td className="py-3 px-4 text-slate-900 dark:text-slate-100">
-                                                        {(set.weight * set.reps).toFixed(1)}
+                                                        {set.weightUnit === 'bodyweight' ? '-' : (set.weight * set.reps).toFixed(1)}
                                                     </td>
                                                     <td className="py-3 px-4 text-slate-600 dark:text-slate-400 text-sm">
                                                         {set.notes || '-'}
