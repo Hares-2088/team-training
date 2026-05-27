@@ -331,8 +331,14 @@ export default function LogWorkoutPage() {
                 alert(`Failed to save workout: ${payload.error || 'Unknown error'}`);
                 throw new Error(payload.error || 'Failed to save workout');
             }
-            const data = await res.json() as { workoutLog?: { _id?: string } };
-            setCompletedLogId(data.workoutLog?._id || null);
+            let savedWorkoutLogId: string | null = null;
+            try {
+                const data = await res.json() as { workoutLog?: { _id?: string } };
+                savedWorkoutLogId = data.workoutLog?._id || null;
+            } catch {
+                savedWorkoutLogId = null;
+            }
+            setCompletedLogId(savedWorkoutLogId);
             window.localStorage.removeItem(`fit-team-workout-session-${trainingId}`);
         } catch (err) {
             console.error('Error saving workout:', err);
