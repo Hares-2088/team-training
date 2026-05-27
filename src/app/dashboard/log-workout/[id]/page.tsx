@@ -333,8 +333,18 @@ export default function LogWorkoutPage() {
             }
             let savedWorkoutLogId: string | null = null;
             try {
-                const data = await res.json() as { workoutLog?: { _id?: string } };
-                savedWorkoutLogId = data.workoutLog?._id || null;
+                const data: unknown = await res.json();
+                if (
+                    typeof data === 'object' &&
+                    data !== null &&
+                    'workoutLog' in data &&
+                    typeof data.workoutLog === 'object' &&
+                    data.workoutLog !== null &&
+                    '_id' in data.workoutLog &&
+                    typeof data.workoutLog._id === 'string'
+                ) {
+                    savedWorkoutLogId = data.workoutLog._id;
+                }
             } catch {
                 savedWorkoutLogId = null;
             }
