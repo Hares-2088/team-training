@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Navbar } from '@/components/Navbar';
 import { NumberInput } from '@/components/ui/number-input';
 import { useAuth } from '@/contexts/AuthContext';
-import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Clock, CheckCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Clock, CheckCircle, Plus, SkipForward, Copy, Check } from 'lucide-react';
 
 type Exercise = {
     name: string;
@@ -42,13 +42,36 @@ type ExerciseLog = {
         reps: number;
         rpe: number;
         notes: string;
+        completed?: boolean;
     }>;
+};
+
+type SavedWorkoutSession = {
+    exerciseLogs: ExerciseLog[];
+    currentExerciseIndex: number;
+    currentSet: number;
+    defaultWeightUnit: 'lbs' | 'kg' | 'bodyweight';
+    isWorkoutStarted: boolean;
+    workoutStartEpoch: number | null;
+    elapsedTime: number;
+};
+
+type HistoricalSetEntry = {
+    exerciseName: string;
+    weight: number;
+    reps: number;
+    rpe?: number;
+    weightUnit?: 'lbs' | 'kg' | 'bodyweight';
+};
+
+type HistoricalWorkoutLog = {
+    member: string;
+    exercises?: HistoricalSetEntry[];
 };
 
 export default function LogWorkoutPage() {
     const params = useParams();
-    const router = useRouter();
-    const { user, activeTeam } = useAuth();
+    const { user } = useAuth();
     const trainingId = params.id as string;
 
     const [training, setTraining] = useState<Training | null>(null);
@@ -62,12 +85,13 @@ export default function LogWorkoutPage() {
     const [isWorkoutStarted, setIsWorkoutStarted] = useState(false);
     const [isWorkoutCompleted, setIsWorkoutCompleted] = useState(false);
     const [workoutStartTime, setWorkoutStartTime] = useState<Date | null>(null);
-    const [workoutEndTime, setWorkoutEndTime] = useState<Date | null>(null);
 
     // Timer state
     const [restTime, setRestTime] = useState(0);
     const [showRestTimer, setShowRestTimer] = useState(false);
     const [elapsedTime, setElapsedTime] = useState(0);
+    const [workoutStartEpoch, setWorkoutStartEpoch] = useState<number | null>(null);
+    const [touchStartX, setTouchStartX] = useState<number | null>(null);
 
     useEffect(() => {
         const fetchTraining = async () => {
@@ -84,8 +108,7 @@ export default function LogWorkoutPage() {
                 // Initialize reordered exercises with original order
                 setReorderedExercises([...data.training.exercises]);
 
-                // Initialize exercise logs
-                const logs = data.training.exercises.map((ex: Exercise) => ({
+                const initialLogs = data.training.exercises.map((ex: Exercise) => ({
                     name: ex.name,
                     targetSets: ex.sets,
                     targetReps: ex.reps,
@@ -95,13 +118,71 @@ export default function LogWorkoutPage() {
                         .map((_, i) => ({
                             set: i + 1,
                             weight: 0,
-                            weightUnit: defaultWeightUnit,
+                            weightUnit: 'lbs',
                             reps: 0,
                             rpe: 5,
                             notes: '',
+                            completed: false,
                         })),
                 }));
-                setExerciseLogs(logs);
+                setExerciseLogs(initialLogs);
+
+                const localStorageKey = `fit-team-workout-session-${trainingId}`;
+                const savedSessionRaw = window.localStorage.getItem(localStorageKey);
+                if (savedSessionRaw) {
+                    try {
+                        const savedSession = JSON.parse(savedSessionRaw) as SavedWorkoutSession;
+                        setExerciseLogs(savedSession.exerciseLogs || initialLogs);
+                        setCurrentExerciseIndex(savedSession.currentExerciseIndex || 0);
+                        setCurrentSet(savedSession.currentSet || 1);
+                        setDefaultWeightUnit(savedSession.defaultWeightUnit || 'lbs');
+                        setIsWorkoutStarted(Boolean(savedSession.isWorkoutStarted));
+                        setWorkoutStartEpoch(savedSession.workoutStartEpoch || null);
+                        setElapsedTime(savedSession.elapsedTime || 0);
+                    } catch {
+                        window.localStorage.removeItem(localStorageKey);
+                    }
+                }
+
+                const logsRes = await fetch(`/api/trainings/${trainingId}/logs`, { credentials: 'include' });
+                if (logsRes.ok) {
+                    const logsData = await logsRes.json() as { logs?: HistoricalWorkoutLog[] };
+                    const allLogs = Array.isArray(logsData.logs) ? logsData.logs : [];
+                    const myLatestLog = allLogs.find(
+                        (log) => String(log.member) === String(user?._id)
+                    );
+
+                    if (myLatestLog?.exercises?.length) {
+                        const latestByExercise = new Map<string, { weight: number; reps: number; rpe?: number; weightUnit?: 'lbs' | 'kg' | 'bodyweight' }>();
+                        myLatestLog.exercises.forEach((entry) => {
+                            if (!latestByExercise.has(entry.exerciseName)) {
+                                latestByExercise.set(entry.exerciseName, {
+                                    weight: entry.weight ?? 0,
+                                    reps: entry.reps ?? 0,
+                                    rpe: entry.rpe ?? 5,
+                                    weightUnit: entry.weightUnit ?? 'lbs',
+                                });
+                            }
+                        });
+
+                        setExerciseLogs((prev) =>
+                            prev.map((exercise) => ({
+                                ...exercise,
+                                logs: exercise.logs.map((setLog) => {
+                                    const previous = latestByExercise.get(exercise.name);
+                                    if (!previous) return setLog;
+                                    return {
+                                        ...setLog,
+                                        weight: previous.weight,
+                                        reps: previous.reps,
+                                        rpe: previous.rpe ?? setLog.rpe,
+                                        weightUnit: previous.weightUnit ?? setLog.weightUnit,
+                                    };
+                                }),
+                            }))
+                        );
+                    }
+                }
             } catch (err) {
                 const message = err instanceof Error ? err.message : 'Failed to load training';
                 setError(message);
@@ -111,7 +192,7 @@ export default function LogWorkoutPage() {
         };
 
         fetchTraining();
-    }, [trainingId]);
+    }, [trainingId, user?._id]);
 
     // Rest timer effect
     useEffect(() => {
@@ -132,14 +213,39 @@ export default function LogWorkoutPage() {
 
     // Elapsed time effect
     useEffect(() => {
-        if (!isWorkoutStarted || isWorkoutCompleted) return;
+        if (!isWorkoutStarted || isWorkoutCompleted || !workoutStartEpoch) return;
 
         const interval = setInterval(() => {
-            setElapsedTime((prev) => prev + 1);
+            setElapsedTime(Math.floor((Date.now() - workoutStartEpoch) / 1000));
         }, 1000);
 
         return () => clearInterval(interval);
-    }, [isWorkoutStarted, isWorkoutCompleted]);
+    }, [isWorkoutStarted, isWorkoutCompleted, workoutStartEpoch]);
+
+    useEffect(() => {
+        if (!isWorkoutStarted || isWorkoutCompleted) return;
+        const localStorageKey = `fit-team-workout-session-${trainingId}`;
+        const session = {
+            isWorkoutStarted,
+            exerciseLogs,
+            currentExerciseIndex,
+            currentSet,
+            defaultWeightUnit,
+            workoutStartEpoch,
+            elapsedTime,
+        };
+        window.localStorage.setItem(localStorageKey, JSON.stringify(session));
+    }, [
+        isWorkoutStarted,
+        isWorkoutCompleted,
+        exerciseLogs,
+        currentExerciseIndex,
+        currentSet,
+        defaultWeightUnit,
+        workoutStartEpoch,
+        elapsedTime,
+        trainingId,
+    ]);
 
     const moveExerciseUp = (index: number) => {
         if (index === 0) return;
@@ -156,6 +262,12 @@ export default function LogWorkoutPage() {
     };
 
     const startWorkout = () => {
+        const prefills = new Map(
+            exerciseLogs.map((exercise) => [
+                exercise.name,
+                exercise.logs[0] || { weight: 0, reps: 0, rpe: 5, weightUnit: defaultWeightUnit },
+            ])
+        );
         // Initialize exercise logs with reordered exercises
         const logs = reorderedExercises.map((ex: Exercise) => ({
             name: ex.name,
@@ -166,21 +278,24 @@ export default function LogWorkoutPage() {
                 .fill(null)
                 .map((_, i) => ({
                     set: i + 1,
-                    weight: 0,
-                    weightUnit: defaultWeightUnit,
-                    reps: 0,
-                    rpe: 5,
+                    weight: prefills.get(ex.name)?.weight ?? 0,
+                    weightUnit: prefills.get(ex.name)?.weightUnit ?? defaultWeightUnit,
+                    reps: prefills.get(ex.name)?.reps ?? 0,
+                    rpe: prefills.get(ex.name)?.rpe ?? 5,
                     notes: '',
+                    completed: false,
                 })),
         }));
         setExerciseLogs(logs);
 
+        const epoch = Date.now();
         setIsWorkoutStarted(true);
         setWorkoutStartTime(new Date());
+        setWorkoutStartEpoch(epoch);
+        setElapsedTime(0);
     };
 
     const completeWorkout = async () => {
-        setWorkoutEndTime(new Date());
         setIsWorkoutCompleted(true);
 
         // Transform exerciseLogs to flat array format for database
@@ -215,6 +330,7 @@ export default function LogWorkoutPage() {
                 alert(`Failed to save workout: ${payload.error || 'Unknown error'}`);
                 throw new Error(payload.error || 'Failed to save workout');
             }
+            window.localStorage.removeItem(`fit-team-workout-session-${trainingId}`);
         } catch (err) {
             console.error('Error saving workout:', err);
         }
@@ -227,7 +343,26 @@ export default function LogWorkoutPage() {
         value: number | string
     ) => {
         const newLogs = [...exerciseLogs];
-        (newLogs[exerciseIndex].logs[setNumber - 1] as any)[field] = value;
+        const targetLog = newLogs[exerciseIndex].logs[setNumber - 1];
+        switch (field) {
+            case 'weight':
+                targetLog.weight = Number(value);
+                break;
+            case 'reps':
+                targetLog.reps = Number(value);
+                break;
+            case 'rpe':
+                targetLog.rpe = Number(value);
+                break;
+            case 'notes':
+                targetLog.notes = String(value);
+                break;
+            case 'weightUnit':
+                targetLog.weightUnit = value as 'lbs' | 'kg' | 'bodyweight';
+                break;
+            default:
+                break;
+        }
         setExerciseLogs(newLogs);
     };
 
@@ -251,6 +386,50 @@ export default function LogWorkoutPage() {
             return `${hours}h ${minutes}m ${secs}s`;
         }
         return `${minutes}m ${secs}s`;
+    };
+
+    const markSetDoneAndAdvance = () => {
+        const newLogs = [...exerciseLogs];
+        newLogs[currentExerciseIndex].logs[currentSet - 1].completed = true;
+        setExerciseLogs(newLogs);
+        if (currentSet < currentExercise.targetSets) {
+            setRestTime(currentExercise.restTime);
+            setShowRestTimer(true);
+            setCurrentSet(currentSet + 1);
+        }
+    };
+
+    const repeatPreviousSet = () => {
+        if (currentSet <= 1) return;
+        const previous = currentExercise.logs[currentSet - 2];
+        if (!previous) return;
+        updateExerciseLog(currentExerciseIndex, currentSet, 'weight', previous.weight);
+        updateExerciseLog(currentExerciseIndex, currentSet, 'reps', previous.reps);
+        updateExerciseLog(currentExerciseIndex, currentSet, 'rpe', previous.rpe);
+    };
+
+    const addExtraSet = () => {
+        setExerciseLogs((prev) => {
+            const updated = [...prev];
+            const current = updated[currentExerciseIndex];
+            current.targetSets += 1;
+            current.logs.push({
+                set: current.logs.length + 1,
+                weight: currentSetLog.weight,
+                weightUnit: currentSetLog.weightUnit,
+                reps: currentSetLog.reps,
+                rpe: currentSetLog.rpe,
+                notes: '',
+                completed: false,
+            });
+            return updated;
+        });
+    };
+
+    const skipExercise = () => {
+        if (currentExerciseIndex >= exerciseLogs.length - 1) return;
+        setCurrentExerciseIndex(currentExerciseIndex + 1);
+        setCurrentSet(1);
     };
 
     if (isLoading) {
@@ -458,6 +637,12 @@ export default function LogWorkoutPage() {
 
     const currentExercise = exerciseLogs[currentExerciseIndex];
     const currentSetLog = currentExercise.logs[currentSet - 1];
+    const totalSetsInWorkout = exerciseLogs.reduce((acc, ex) => acc + ex.targetSets, 0);
+    const completedSetsInWorkout = exerciseLogs.reduce(
+        (acc, ex) => acc + ex.logs.filter((log) => log.completed).length,
+        0
+    );
+    const workoutProgress = totalSetsInWorkout > 0 ? Math.round((completedSetsInWorkout / totalSetsInWorkout) * 100) : 0;
 
     return (
         <div className="min-h-screen bg-white dark:bg-slate-950">
@@ -478,6 +663,19 @@ export default function LogWorkoutPage() {
                             <Clock className="w-4 h-4" />
                             <span className="font-mono">{formatTime(elapsedTime)}</span>
                         </div>
+                    </div>
+                </div>
+
+                <div className="mb-6">
+                    <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400 mb-2">
+                        <span>Workout progress</span>
+                        <span>{workoutProgress}%</span>
+                    </div>
+                    <div className="h-2 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                        <div
+                            className="h-full bg-slate-900 dark:bg-slate-100 transition-all"
+                            style={{ width: `${workoutProgress}%` }}
+                        />
                     </div>
                 </div>
 
@@ -502,7 +700,24 @@ export default function LogWorkoutPage() {
                 )}
 
                 {/* Exercise Card */}
-                <Card className="shadow-lg mb-8">
+                <Card
+                    className="shadow-lg mb-8"
+                    onTouchStart={(e) => setTouchStartX(e.touches[0].clientX)}
+                    onTouchEnd={(e) => {
+                        if (touchStartX === null) return;
+                        const deltaX = e.changedTouches[0].clientX - touchStartX;
+                        setTouchStartX(null);
+                        if (Math.abs(deltaX) < 60) return;
+                        if (deltaX < 0 && currentExerciseIndex < exerciseLogs.length - 1) {
+                            setCurrentExerciseIndex(currentExerciseIndex + 1);
+                            setCurrentSet(1);
+                        }
+                        if (deltaX > 0 && currentExerciseIndex > 0) {
+                            setCurrentExerciseIndex(currentExerciseIndex - 1);
+                            setCurrentSet(1);
+                        }
+                    }}
+                >
                     <CardHeader>
                         <CardTitle className="text-2xl">{currentExercise.name}</CardTitle>
                         <CardDescription>
@@ -567,6 +782,23 @@ export default function LogWorkoutPage() {
                                     />
                                 </div>
                             </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={repeatPreviousSet}
+                                    disabled={currentSet <= 1}
+                                    className="h-11"
+                                >
+                                    <Copy className="w-4 h-4 mr-2" />
+                                    Repeat Previous Set
+                                </Button>
+                                <Button type="button" variant="outline" onClick={addExtraSet} className="h-11">
+                                    <Plus className="w-4 h-4 mr-2" />
+                                    Add Extra Set
+                                </Button>
+                            </div>
                         </div>
 
                         {/* RPE Slider */}
@@ -612,16 +844,29 @@ export default function LogWorkoutPage() {
                             />
                         </div>
 
+                        <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-900">
+                            <span className="text-sm text-slate-700 dark:text-slate-300">Set completed</span>
+                            <Button
+                                type="button"
+                                size="sm"
+                                variant={currentSetLog.completed ? 'default' : 'outline'}
+                                onClick={() => {
+                                    const newLogs = [...exerciseLogs];
+                                    newLogs[currentExerciseIndex].logs[currentSet - 1].completed = !currentSetLog.completed;
+                                    setExerciseLogs(newLogs);
+                                }}
+                            >
+                                <Check className="w-4 h-4 mr-1" />
+                                {currentSetLog.completed ? 'Completed' : 'Mark complete'}
+                            </Button>
+                        </div>
+
                         {/* Set Progress */}
                         {currentSet < currentExercise.targetSets && (
                             <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
                                 <p className="text-sm text-blue-700 dark:text-blue-300 mb-3">Ready for next set?</p>
                                 <Button
-                                    onClick={() => {
-                                        setRestTime(currentExercise.restTime);
-                                        setShowRestTimer(true);
-                                        setCurrentSet(currentSet + 1);
-                                    }}
+                                    onClick={markSetDoneAndAdvance}
                                     className="w-full"
                                 >
                                     Next Set ({currentExercise.restTime}s Rest)
@@ -632,7 +877,7 @@ export default function LogWorkoutPage() {
                 </Card>
 
                 {/* Navigation and Actions */}
-                <div className="flex gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <Button
                         variant="outline"
                         onClick={() => {
@@ -640,14 +885,24 @@ export default function LogWorkoutPage() {
                             setCurrentSet(1);
                         }}
                         disabled={currentExerciseIndex === 0}
-                        className="flex-1"
+                        className="h-11"
                     >
                         <ChevronLeft className="w-4 h-4 mr-2" />
                         Previous Exercise
                     </Button>
 
+                    <Button
+                        variant="outline"
+                        onClick={skipExercise}
+                        disabled={currentExerciseIndex >= exerciseLogs.length - 1}
+                        className="h-11"
+                    >
+                        <SkipForward className="w-4 h-4 mr-2" />
+                        Skip Exercise
+                    </Button>
+
                     {currentExerciseIndex === exerciseLogs.length - 1 && currentSet === currentExercise.targetSets ? (
-                        <Button onClick={completeWorkout} className="flex-1">
+                        <Button onClick={completeWorkout} className="h-11">
                             <CheckCircle className="w-4 h-4 mr-2" />
                             Complete Workout
                         </Button>
@@ -660,7 +915,7 @@ export default function LogWorkoutPage() {
                                 }
                             }}
                             disabled={currentExerciseIndex === exerciseLogs.length - 1 && currentSet < currentExercise.targetSets}
-                            className="flex-1"
+                            className="h-11"
                         >
                             Next Exercise
                             <ChevronRight className="w-4 h-4 ml-2" />

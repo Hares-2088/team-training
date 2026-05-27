@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { TrainingCard } from '@/components/TrainingCard';
 import { Navbar } from '@/components/Navbar';
@@ -60,37 +60,37 @@ export default function TrainingsPage() {
 
                 const trainingsData = await trainingsRes.json();
                 const loadedTrainings = trainingsData.trainings || [];
+                setTrainings(loadedTrainings);
+                setIsLoading(false);
 
                 // For trainers/coaches: check if all members completed each training
                 if (effectiveRole === 'trainer' || effectiveRole === 'coach') {
-                    // Fetch active team data to know member count
-                    const teamRes = await fetch(`/api/teams/${activeTeam.teamId}`, { credentials: 'include' });
-                    if (teamRes.ok) {
+                    void (async () => {
+                        const teamRes = await fetch(`/api/teams/${activeTeam.teamId}`, { credentials: 'include' });
+                        if (!teamRes.ok) return;
+
                         const teamData = await teamRes.json();
                         const team: Team = teamData.team;
                         const memberCount = team.members?.length || 0;
 
-                        // For each training, fetch logs and check completion
-                        const trainingsWithCompletion = await Promise.all(
-                            loadedTrainings.map(async (training: Training) => {
-                                const logsRes = await fetch(`/api/trainings/${training._id}/logs`, { credentials: 'include' });
-                                if (logsRes.ok) {
-                                    const logsData = await logsRes.json();
-                                    const logs = logsData.logs || [];
-                                    // Count unique members who logged this training
-                                    const uniqueMembers = new Set(logs.map((log: WorkoutLog) => log.member));
-                                    const allMembersCompleted = memberCount > 0 && uniqueMembers.size >= memberCount;
-                                    return { ...training, allMembersCompleted };
-                                }
-                                return { ...training, allMembersCompleted: false };
-                            })
-                        );
-                        setTrainings(trainingsWithCompletion);
-                    } else {
-                        setTrainings(loadedTrainings);
-                    }
+                        for (const training of loadedTrainings) {
+                            const logsRes = await fetch(`/api/trainings/${training._id}/logs`, { credentials: 'include' });
+                            let completed = false;
+                            if (logsRes.ok) {
+                                const logsData = await logsRes.json();
+                                const logs = logsData.logs || [];
+                                const uniqueMembers = new Set(logs.map((log: WorkoutLog) => log.member));
+                                completed = memberCount > 0 && uniqueMembers.size >= memberCount;
+                            }
+
+                            setTrainings((prev) =>
+                                prev.map((item) =>
+                                    item._id === training._id ? { ...item, allMembersCompleted: completed } : item
+                                )
+                            );
+                        }
+                    })();
                 } else {
-                    // For members: fetch their logs
                     const workoutLogsRes = await fetch('/api/workout-logs', { credentials: 'include' });
                     const workoutLogsData = workoutLogsRes.ok ? await workoutLogsRes.json() : [];
 
@@ -100,17 +100,16 @@ export default function TrainingsPage() {
                             .map((log: WorkoutLog) => typeof log.training === 'string' ? log.training : log.training._id)
                     );
 
-                    const trainingsWithStatus = loadedTrainings.map((training: Training) => ({
-                        ...training,
-                        allMembersCompleted: completedTrainingIds.has(training._id),
-                    }));
-
-                    setTrainings(trainingsWithStatus);
+                    setTrainings((prev) =>
+                        prev.map((training) => ({
+                            ...training,
+                            allMembersCompleted: completedTrainingIds.has(training._id),
+                        }))
+                    );
                 }
             } catch (err) {
                 const message = err instanceof Error ? err.message : 'Failed to load trainings';
                 setError(message);
-            } finally {
                 setIsLoading(false);
             }
         };
@@ -283,7 +282,7 @@ export default function TrainingsPage() {
                     <DialogHeader>
                         <DialogTitle>Delete Training</DialogTitle>
                         <DialogDescription>
-                            Are you sure you want to delete "<span className="font-semibold">{deleteDialog.title}</span>"? This action cannot be undone.
+                            Are you sure you want to delete &quot;<span className="font-semibold">{deleteDialog.title}</span>&quot;? This action cannot be undone.
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter className="gap-2">
