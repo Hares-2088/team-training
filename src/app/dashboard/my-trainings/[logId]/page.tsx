@@ -125,7 +125,7 @@ export default function WorkoutDetailPage({
     if (loading) {
         return (
             <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-50">
-                <Navbar currentPage="dashboard" />
+                <Navbar currentPage="progress" />
                 <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
                     <div className="text-center py-12">
                         <p className="text-slate-600 dark:text-slate-400">Loading workout details...</p>
@@ -138,7 +138,7 @@ export default function WorkoutDetailPage({
     if (!workoutLog) {
         return (
             <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-50">
-                <Navbar currentPage="dashboard" />
+                <Navbar currentPage="progress" />
                 <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
                     <Card className="border-0 shadow-lg">
                         <CardContent className="py-12 text-center">
@@ -161,7 +161,7 @@ export default function WorkoutDetailPage({
 
     return (
         <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-50">
-            <Navbar currentPage="dashboard" />
+            <Navbar currentPage="progress" />
 
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
                 {/* Back Button */}
