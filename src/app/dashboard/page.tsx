@@ -6,11 +6,44 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Navbar } from '@/components/Navbar';
 import { ActivityChart } from '@/components/ActivityChart';
 import { useAuth } from '@/contexts/AuthContext';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { Flame, Trophy, CalendarCheck, PlayCircle } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+
+type Training = {
+    _id: string;
+    title: string;
+    description?: string;
+    scheduledDate: string;
+    status: 'scheduled' | 'completed' | 'cancelled';
+    exercises?: { name: string }[];
+};
+
+type WorkoutLog = {
+    _id: string;
+    completedAt: string;
+    training?: string | { _id: string; title?: string; scheduledDate?: string };
+    exercises: Array<{
+        exerciseName: string;
+        weight: number;
+        reps: number;
+        weightUnit?: 'lbs' | 'kg' | 'bodyweight';
+    }>;
+};
+
+type PersonalBestEvent = {
+    exerciseName: string;
+    weight: number;
+    reps: number;
+    date: string;
+};
 
 export default function Dashboard() {
     const { user, loading, activeTeam } = useAuth();
-    const router = require('next/navigation').useRouter();
+    const router = useRouter();
+    const [trainings, setTrainings] = useState<Training[]>([]);
+    const [workoutLogs, setWorkoutLogs] = useState<WorkoutLog[]>([]);
+    const [dataLoading, setDataLoading] = useState(true);
 
     const effectiveRole = activeTeam.role || user?.role || null;
 
@@ -32,7 +65,42 @@ export default function Dashboard() {
             }
         };
         checkTeam();
-    }, [loading, user, effectiveRole]);
+    }, [loading, user, effectiveRole, router]);
+
+    useEffect(() => {
+        const fetchDashboardData = async () => {
+            if (!user) return;
+            setDataLoading(true);
+
+            try {
+                const [trainingsRes, logsRes] = await Promise.all([
+                    fetch('/api/trainings', { credentials: 'include' }),
+                    fetch('/api/workout-logs', { credentials: 'include' }),
+                ]);
+
+                if (trainingsRes.ok) {
+                    const trainingsData = await trainingsRes.json();
+                    setTrainings(trainingsData.trainings || []);
+                } else {
+                    setTrainings([]);
+                }
+
+                if (logsRes.ok) {
+                    const logsData = await logsRes.json();
+                    setWorkoutLogs(Array.isArray(logsData) ? logsData : []);
+                } else {
+                    setWorkoutLogs([]);
+                }
+            } catch {
+                setTrainings([]);
+                setWorkoutLogs([]);
+            } finally {
+                setDataLoading(false);
+            }
+        };
+
+        fetchDashboardData();
+    }, [user, activeTeam.teamId]);
 
     if (loading) {
         return (
@@ -47,202 +115,255 @@ export default function Dashboard() {
 
     const userRole = effectiveRole || 'member';
     const canManageTrainings = userRole === 'trainer' || userRole === 'coach';
+    const isTrainerView = userRole === 'trainer';
+
+    const completedTrainingIds = new Set(
+        workoutLogs
+            .map((log) => (typeof log.training === 'string' ? log.training : log.training?._id))
+            .filter((id): id is string => Boolean(id))
+    );
+
+    const now = new Date();
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const endOfDay = startOfDay + 86400000;
+    const todaysTrainings = trainings
+        .filter((training) => {
+            const date = new Date(training.scheduledDate).getTime();
+            return date >= startOfDay && date < endOfDay;
+        })
+        .sort((a, b) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime());
+    const todaysWorkout =
+        todaysTrainings.find((training) => !completedTrainingIds.has(training._id)) || todaysTrainings[0] || null;
+
+    const day = now.getDay();
+    const diffToMonday = day === 0 ? 6 : day - 1;
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - diffToMonday);
+    weekStart.setHours(0, 0, 0, 0);
+    const workoutsThisWeek = workoutLogs.filter((log) => new Date(log.completedAt).getTime() >= weekStart.getTime()).length;
+
+    let streak = 0;
+    if (workoutLogs.length > 0) {
+        const uniqueDays = new Set(
+            workoutLogs.map((log) => {
+                const d = new Date(log.completedAt);
+                return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+            })
+        );
+        const streakCursor = new Date();
+        streakCursor.setHours(0, 0, 0, 0);
+        const todayKey = `${streakCursor.getFullYear()}-${streakCursor.getMonth()}-${streakCursor.getDate()}`;
+        if (!uniqueDays.has(todayKey)) {
+            streakCursor.setDate(streakCursor.getDate() - 1);
+        }
+        let key = `${streakCursor.getFullYear()}-${streakCursor.getMonth()}-${streakCursor.getDate()}`;
+        while (uniqueDays.has(key)) {
+            streak++;
+            streakCursor.setDate(streakCursor.getDate() - 1);
+            key = `${streakCursor.getFullYear()}-${streakCursor.getMonth()}-${streakCursor.getDate()}`;
+        }
+    }
+
+    const logsAsc = [...workoutLogs].sort(
+        (a, b) => new Date(a.completedAt).getTime() - new Date(b.completedAt).getTime()
+    );
+    const bestByExercise = new Map<string, number>();
+    const events: PersonalBestEvent[] = [];
+    logsAsc.forEach((log) => {
+        log.exercises?.forEach((set) => {
+            if (set.weightUnit === 'bodyweight') return;
+            const score = set.weight * 1000 + set.reps;
+            const currentBest = bestByExercise.get(set.exerciseName) ?? -1;
+            if (score > currentBest && set.weight > 0 && set.reps > 0) {
+                bestByExercise.set(set.exerciseName, score);
+                events.push({
+                    exerciseName: set.exerciseName,
+                    weight: set.weight,
+                    reps: set.reps,
+                    date: log.completedAt,
+                });
+            }
+        });
+    });
+    const recentPRs = events.slice(-3).reverse();
+
+    const recentActivity = [...workoutLogs]
+        .sort((a, b) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime())
+        .slice(0, 4);
 
     return (
         <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-50">
             <Navbar currentPage="dashboard" />
 
-            {/* Main Content */}
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-                {/* Welcome Section */}
-                <div className="mb-12">
-                    <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">
-                        Welcome back, {user?.name || 'User'}!
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 space-y-6">
+                <div>
+                    <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">
+                        Welcome back, {user?.name || 'User'}
                     </h2>
-                    <p className="text-lg text-slate-600 dark:text-slate-400">
-                        {userRole === 'trainer'
-                            ? 'Create workouts and manage your team'
-                            : 'Track your workouts and progress'}
+                    <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 mt-1">
+                        {isTrainerView ? 'Keep your team consistent and progressing.' : 'Today’s focus, then log with speed.'}
                     </p>
                 </div>
 
-                {/* Quick Actions */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
-                    {userRole === 'trainer' ? (
-                        <>
-                            <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow cursor-pointer">
-                                <CardHeader>
-                                    <CardTitle className="flex items-center gap-2">
-                                        <span className="text-2xl">➕</span>
-                                        <span className="inline-block">Create New Training</span>
-                                    </CardTitle>
-                                    <CardDescription>Design a workout for your team</CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <Link href="/trainings/create">
-                                        <Button className="w-full">Create Training</Button>
-                                    </Link>
-                                </CardContent>
-                            </Card>
-
-                            <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow cursor-pointer">
-                                <CardHeader>
-                                    <CardTitle className="flex items-center gap-2">
-                                        <span className="text-2xl">🏋️</span>
-                                        <span className="inline-block">View Workout Plans</span>
-                                    </CardTitle>
-                                    <CardDescription>See all workout plans for your teams</CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <Link href="/trainings">
-                                        <Button className="w-full">Browse Plans</Button>
-                                    </Link>
-                                </CardContent>
-                            </Card>
-
-                            <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow cursor-pointer">
-                                <CardHeader>
-                                    <CardTitle className="flex items-center gap-2">
-                                        <span className="text-2xl">👥</span>
-                                        <span className="inline-block">Manage Teams</span>
-                                    </CardTitle>
-                                    <CardDescription>Create teams and invite members</CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <Link href="/teams">
-                                        <Button className="w-full">Go to Teams</Button>
-                                    </Link>
-                                </CardContent>
-                            </Card>
-                        </>
-                    ) : canManageTrainings ? (
-                        <>
-                            <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow cursor-pointer">
-                                <CardHeader>
-                                    <CardTitle className="flex items-center gap-2">
-                                        <span className="text-2xl">➕</span>
-                                        <span className="inline-block">Create New Training</span>
-                                    </CardTitle>
-                                    <CardDescription>Design a workout for your team</CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <Link href="/trainings/create">
-                                        <Button className="w-full">Create Training</Button>
-                                    </Link>
-                                </CardContent>
-                            </Card>
-
-                            <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow cursor-pointer">
-                                <CardHeader>
-                                    <CardTitle className="flex items-center gap-2">
-                                        <span className="text-2xl">🏋️</span>
-                                        <span className="inline-block">View Workout Plans</span>
-                                    </CardTitle>
-                                    <CardDescription>See all workout plans for your team</CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <Link href="/trainings">
-                                        <Button className="w-full">Browse Plans</Button>
-                                    </Link>
-                                </CardContent>
-                            </Card>
-
-                            <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow cursor-pointer">
-                                <CardHeader>
-                                    <CardTitle className="flex items-center gap-2">
-                                        <span className="text-2xl">📊</span>
-                                        <span className="inline-block">My Workout Stats</span>
-                                    </CardTitle>
-                                    <CardDescription>View your workout history and progress</CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <Link href="/dashboard/my-trainings" className="block">
-                                        <Button className="w-full">View My Workout Stats</Button>
-                                    </Link>
-                                </CardContent>
-                            </Card>
-
-                            <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow cursor-pointer">
-                                <CardHeader>
-                                    <CardTitle className="flex items-center gap-2">
-                                        <span className="text-2xl">👥</span>
-                                        <span className="inline-block">My Team</span>
-                                    </CardTitle>
-                                    <CardDescription>View your team and team members</CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <Link href="/teams">
-                                        <Button className="w-full">View Team</Button>
-                                    </Link>
-                                </CardContent>
-                            </Card>
-                        </>
-                    ) : (
-                        <>
-                            <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow cursor-pointer">
-                                <CardHeader>
-                                    <CardTitle className="flex items-center gap-2">
-                                        <span className="text-2xl">🏋️</span>
-                                        <span className="inline-block">View Workout Plans</span>
-                                    </CardTitle>
-                                    <CardDescription>Browse and log your workouts</CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <Link href="/trainings">
-                                        <Button className="w-full">Browse Plans</Button>
-                                    </Link>
-                                </CardContent>
-                            </Card>
-
-                            <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow cursor-pointer">
-                                <CardHeader>
-                                    <CardTitle className="flex items-center gap-2">
-                                        <span className="text-2xl">📊</span>
-                                        <span className="inline-block">My Workout Stats</span>
-                                    </CardTitle>
-                                    <CardDescription>View your workout history and progress</CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <Link href="/dashboard/my-trainings" className="block">
-                                        <Button className="w-full">View My Workout Stats</Button>
-                                    </Link>
-                                </CardContent>
-                            </Card>
-
-                            <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow cursor-pointer">
-                                <CardHeader>
-                                    <CardTitle className="flex items-center gap-2">
-                                        <span className="text-2xl">👥</span>
-                                        <span className="inline-block">My Team</span>
-                                    </CardTitle>
-                                    <CardDescription>View your team and team members</CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <Link href="/teams">
-                                        <Button className="w-full">View Team</Button>
-                                    </Link>
-                                </CardContent>
-                            </Card>
-                        </>
-                    )}
-                </div>
-
-                {/* Recent Activity */}
-                <div className="grid grid-cols-1 gap-6">
+                {!isTrainerView && (
                     <Card className="border-0 shadow-lg">
                         <CardHeader>
-                            <CardTitle>Recent Activity</CardTitle>
-                            <CardDescription>
-                                {userRole === 'trainer'
-                                    ? "Your team's training activity by day"
-                                    : 'Your workout logging activity by day'}
-                            </CardDescription>
+                            <CardTitle>Today’s Workout</CardTitle>
+                            <CardDescription>Choose team → start workout → log sets → finish → review progress</CardDescription>
                         </CardHeader>
-                        <CardContent>
-                            <ActivityChart isTrainer={userRole === 'trainer'} />
+                        <CardContent className="space-y-4">
+                            {dataLoading ? (
+                                <p className="text-sm text-slate-500 dark:text-slate-400">Loading today’s training...</p>
+                            ) : todaysWorkout ? (
+                                <>
+                                    <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900">
+                                        <p className="font-semibold text-slate-900 dark:text-white">{todaysWorkout.title}</p>
+                                        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                                            {new Date(todaysWorkout.scheduledDate).toLocaleString('en-US', {
+                                                month: 'short',
+                                                day: 'numeric',
+                                                hour: '2-digit',
+                                                minute: '2-digit',
+                                            })}
+                                        </p>
+                                    </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        <Link href={`/dashboard/log-workout/${todaysWorkout._id}`}>
+                                            <Button className="w-full h-11">
+                                                <PlayCircle className="w-4 h-4 mr-2" />
+                                                Quick Start
+                                            </Button>
+                                        </Link>
+                                        <Link href={`/trainings/${todaysWorkout._id}`}>
+                                            <Button variant="outline" className="w-full h-11">
+                                                View Workout
+                                            </Button>
+                                        </Link>
+                                    </div>
+                                </>
+                            ) : (
+                                <div className="space-y-3">
+                                    <p className="text-sm text-slate-600 dark:text-slate-400">No scheduled workout for today yet.</p>
+                                    <Link href="/trainings">
+                                        <Button variant="outline">Browse Workout Plans</Button>
+                                    </Link>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                )}
+
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                    <Card className="border-0 shadow-sm">
+                        <CardContent className="pt-6">
+                            <div className="flex items-center gap-2 text-orange-600">
+                                <Flame className="w-4 h-4" />
+                                <span className="text-xs uppercase tracking-wide">Streak</span>
+                            </div>
+                            <p className="text-2xl font-bold mt-2">{streak}</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">days in a row</p>
+                        </CardContent>
+                    </Card>
+                    <Card className="border-0 shadow-sm">
+                        <CardContent className="pt-6">
+                            <div className="flex items-center gap-2 text-emerald-600">
+                                <CalendarCheck className="w-4 h-4" />
+                                <span className="text-xs uppercase tracking-wide">This week</span>
+                            </div>
+                            <p className="text-2xl font-bold mt-2">{workoutsThisWeek}</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">workouts done</p>
+                        </CardContent>
+                    </Card>
+                    <Card className="border-0 shadow-sm col-span-2">
+                        <CardContent className="pt-6">
+                            <div className="flex items-center gap-2 text-violet-600">
+                                <Trophy className="w-4 h-4" />
+                                <span className="text-xs uppercase tracking-wide">Recent PRs</span>
+                            </div>
+                            <div className="mt-2 space-y-1">
+                                {recentPRs.length === 0 ? (
+                                    <p className="text-sm text-slate-500 dark:text-slate-400">No PRs yet — keep logging.</p>
+                                ) : (
+                                    recentPRs.map((pr, index) => (
+                                        <p key={`${pr.exerciseName}-${index}`} className="text-sm text-slate-700 dark:text-slate-300">
+                                            {pr.exerciseName}: {pr.weight} × {pr.reps}
+                                        </p>
+                                    ))
+                                )}
+                            </div>
                         </CardContent>
                     </Card>
                 </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <Card className="border-0 shadow-lg lg:col-span-2">
+                        <CardHeader>
+                            <CardTitle>Recent Activity</CardTitle>
+                            <CardDescription>Your latest completed workouts</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            {recentActivity.length === 0 ? (
+                                <p className="text-sm text-slate-500 dark:text-slate-400">No activity yet.</p>
+                            ) : (
+                                <div className="space-y-3">
+                                    {recentActivity.map((log) => {
+                                        const training = typeof log.training === 'string' ? null : log.training;
+                                        return (
+                                            <div key={log._id} className="p-3 rounded-lg bg-slate-50 dark:bg-slate-900">
+                                                <p className="font-medium text-sm text-slate-900 dark:text-white">
+                                                    {training?.title || 'Workout'}
+                                                </p>
+                                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                                    {new Date(log.completedAt).toLocaleString('en-US', {
+                                                        month: 'short',
+                                                        day: 'numeric',
+                                                        hour: '2-digit',
+                                                        minute: '2-digit',
+                                                    })}
+                                                </p>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+
+                    <Card className="border-0 shadow-lg">
+                        <CardHeader>
+                            <CardTitle>Quick Actions</CardTitle>
+                            <CardDescription>Fast navigation</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-2">
+                            {(canManageTrainings || isTrainerView) && (
+                                <Link href="/trainings/create" className="block">
+                                    <Button className="w-full" variant="outline">Create Training</Button>
+                                </Link>
+                            )}
+                            <Link href="/trainings" className="block">
+                                <Button className="w-full" variant="outline">Workout Plans</Button>
+                            </Link>
+                            <Link href="/dashboard/my-trainings" className="block">
+                                <Button className="w-full" variant="outline">My Progress</Button>
+                            </Link>
+                            <Link href="/teams" className="block">
+                                <Button className="w-full" variant="outline">Team</Button>
+                            </Link>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                <Card className="border-0 shadow-lg">
+                    <CardHeader>
+                        <CardTitle>Activity Trends</CardTitle>
+                        <CardDescription>
+                            {isTrainerView ? "Your team's training activity by day" : 'Your workout logging activity by day'}
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <ActivityChart isTrainer={isTrainerView} />
+                    </CardContent>
+                </Card>
             </main>
         </div>
     );
