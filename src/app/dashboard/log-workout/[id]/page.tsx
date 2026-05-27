@@ -84,6 +84,7 @@ export default function LogWorkoutPage() {
     const [defaultWeightUnit, setDefaultWeightUnit] = useState<'lbs' | 'kg' | 'bodyweight'>('lbs');
     const [isWorkoutStarted, setIsWorkoutStarted] = useState(false);
     const [isWorkoutCompleted, setIsWorkoutCompleted] = useState(false);
+    const [completedLogId, setCompletedLogId] = useState<string | null>(null);
     const [workoutStartTime, setWorkoutStartTime] = useState<Date | null>(null);
 
     // Timer state
@@ -330,6 +331,8 @@ export default function LogWorkoutPage() {
                 alert(`Failed to save workout: ${payload.error || 'Unknown error'}`);
                 throw new Error(payload.error || 'Failed to save workout');
             }
+            const data = await res.json() as { workoutLog?: { _id?: string } };
+            setCompletedLogId(data.workoutLog?._id || null);
             window.localStorage.removeItem(`fit-team-workout-session-${trainingId}`);
         } catch (err) {
             console.error('Error saving workout:', err);
@@ -514,6 +517,14 @@ export default function LogWorkoutPage() {
                             <div className="flex gap-3 pt-6">
                                 <Link href="/dashboard" className="flex-1">
                                     <Button className="w-full">Back to Dashboard</Button>
+                                </Link>
+                                <Link
+                                    href={completedLogId ? `/dashboard/my-trainings/${completedLogId}` : '/dashboard/my-trainings'}
+                                    className="flex-1"
+                                >
+                                    <Button variant="outline" className="w-full">
+                                        View My Log
+                                    </Button>
                                 </Link>
                                 <Link href="/trainings" className="flex-1">
                                     <Button variant="outline" className="w-full">
