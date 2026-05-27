@@ -83,7 +83,7 @@ export default function MyTrainingsPage() {
 
     return (
         <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-50">
-            <Navbar currentPage="workouts" />
+            <Navbar currentPage="progress" />
 
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
                 <div className="mb-8">

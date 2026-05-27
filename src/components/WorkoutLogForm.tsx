@@ -32,6 +32,7 @@ export function WorkoutLogForm({
 }: Readonly<WorkoutLogFormProps>) {
     const [workoutData, setWorkoutData] = useState<WorkoutExercise[]>([]);
     const [notes, setNotes] = useState('');
+    const [defaultWeightUnit, setDefaultWeightUnit] = useState<'lbs' | 'kg' | 'bodyweight'>('lbs');
 
     const handleExerciseChange = (index: number, field: keyof WorkoutExercise, value: any) => {
         const newData = [...workoutData];

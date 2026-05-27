@@ -7,11 +7,11 @@ import { LogOut } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface NavbarProps {
-    currentPage?: 'dashboard' | 'teams' | 'workouts';
+    currentPage?: 'dashboard' | 'teams' | 'workouts' | 'progress';
 }
 
 export function Navbar({ currentPage }: NavbarProps) {
-    const { logout, user } = useAuth();
+    const { logout } = useAuth();
 
     const handleLogout = async () => {
         try {
@@ -39,6 +39,11 @@ export function Navbar({ currentPage }: NavbarProps) {
                         {currentPage !== 'workouts' && (
                             <Link href="/trainings" className="hidden md:inline-block">
                                 <Button variant="ghost" size="sm">Workouts</Button>
+                            </Link>
+                        )}
+                        {currentPage !== 'progress' && (
+                            <Link href="/dashboard/my-trainings" className="hidden md:inline-block">
+                                <Button variant="ghost" size="sm">Progress</Button>
                             </Link>
                         )}
                         {currentPage !== 'teams' && (
