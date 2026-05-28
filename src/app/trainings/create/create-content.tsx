@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { CreateTrainingForm } from '@/components/CreateTrainingForm';
+import { addMonthsToDateKey } from '@/lib/date';
 
 export default function CreateTrainingPageContent() {
     const router = useRouter();
@@ -43,9 +44,20 @@ export default function CreateTrainingPageContent() {
                 throw new Error('At least one date is required');
             }
 
-            // Create a training for each selected date
+            const repeatForMonths = Math.max(1, Number(data.repeatForMonths) || 1);
+            const expandedDateSet = new Set<string>();
+
+            for (const date of data.scheduledDates) {
+                for (let monthOffset = 0; monthOffset < repeatForMonths; monthOffset++) {
+                    expandedDateSet.add(addMonthsToDateKey(date, monthOffset));
+                }
+            }
+
+            const expandedDates = Array.from(expandedDateSet).sort();
+
+            // Create a training for each expanded date in the plan
             const createdTrainings = [];
-            for (const scheduledDate of data.scheduledDates) {
+            for (const scheduledDate of expandedDates) {
                 const response = await fetch('/api/trainings', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -88,12 +100,12 @@ export default function CreateTrainingPageContent() {
 
             <div className="mb-6">
                 <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
-                    {isPersonal ? 'Create Personal Training' : 'Create Team Training'}
+                    {isPersonal ? 'Create Personal Plan' : 'Create Team Plan'}
                 </h1>
                 <p className="text-slate-600 dark:text-slate-400 mt-2">
                     {isPersonal
-                        ? 'Create a personal training for yourself. Only you can see this training.'
-                        : 'Create a training for your team. All team members will see this.'}
+                        ? 'Create a personal plan for yourself. Only you can see this plan.'
+                        : 'Create a team plan. Team members will see all trainings generated from this plan.'}
                 </p>
             </div>
 

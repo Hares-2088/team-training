@@ -9,6 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useEffect, useState } from 'react';
 import { Flame, Trophy, CalendarCheck, PlayCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { formatDateLabel, toDateKey } from '@/lib/date';
 
 type Training = {
     _id: string;
@@ -124,14 +125,10 @@ export default function Dashboard() {
     );
 
     const now = new Date();
-    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-    const endOfDay = startOfDay + 86400000;
+    const todayKey = toDateKey(now);
     const todaysTrainings = trainings
-        .filter((training) => {
-            const date = new Date(training.scheduledDate).getTime();
-            return date >= startOfDay && date < endOfDay;
-        })
-        .sort((a, b) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime());
+        .filter((training) => toDateKey(training.scheduledDate) === todayKey)
+        .sort((a, b) => toDateKey(a.scheduledDate).localeCompare(toDateKey(b.scheduledDate)));
     const todaysWorkout =
         todaysTrainings.find((training) => !completedTrainingIds.has(training._id)) || todaysTrainings[0] || null;
 
@@ -219,11 +216,11 @@ export default function Dashboard() {
                                     <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900">
                                         <p className="font-semibold text-slate-900 dark:text-white">{todaysWorkout.title}</p>
                                         <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                                            {new Date(todaysWorkout.scheduledDate).toLocaleString('en-US', {
+                                            {formatDateLabel(todaysWorkout.scheduledDate, {
+                                                weekday: 'short',
                                                 month: 'short',
                                                 day: 'numeric',
-                                                hour: '2-digit',
-                                                minute: '2-digit',
+                                                year: 'numeric',
                                             })}
                                         </p>
                                     </div>
@@ -337,7 +334,7 @@ export default function Dashboard() {
                         <CardContent className="space-y-2">
                             {(canManageTrainings || isTrainerView) && (
                                 <Link href="/trainings/create" className="block">
-                                    <Button className="w-full" variant="outline">Create Training</Button>
+                                    <Button className="w-full" variant="outline">Create Plan</Button>
                                 </Link>
                             )}
                             <Link href="/trainings" className="block">

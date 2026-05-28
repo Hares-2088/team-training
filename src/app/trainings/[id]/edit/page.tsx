@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { EditTrainingForm } from '@/components/EditTrainingForm';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { ChevronLeft } from 'lucide-react';
+import { toDateKey } from '@/lib/date';
 
 type Training = {
     _id: string;
@@ -161,7 +162,7 @@ export default function EditTrainingPage() {
                     initialData={{
                         title: training.title,
                         description: training.description || '',
-                        scheduledDate: new Date(training.scheduledDate).toISOString().split('T')[0],
+                        scheduledDate: toDateKey(training.scheduledDate),
                         exercises: training.exercises.map(ex => ({ ...ex, notes: ex.notes || '' })),
                         teamId: training.team?._id || '',
                     }}

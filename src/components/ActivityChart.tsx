@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { format, parseISO, differenceInDays, isToday, startOfDay } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { toDateKey } from '@/lib/date';
 
 type ActivityData =
     | Array<{ date: string; workouts: number }>
@@ -77,8 +78,7 @@ export function ActivityChart({ isTrainer }: { isTrainer: boolean }) {
                 // Build training days map
                 const days = new Map<string, TrainingDay>();
                 trainings.forEach((training: any) => {
-                    const date = new Date(training.scheduledDate);
-                    const dateString = date.toISOString().split('T')[0];
+                    const dateString = toDateKey(training.scheduledDate);
                     const isCompleted = completedTrainings.has(training._id);
 
                     days.set(dateString, {
