@@ -19,6 +19,8 @@ type Training = {
     status: 'scheduled' | 'completed' | 'cancelled';
     team?: string;
     allMembersCompleted?: boolean;
+    /** Whether the currently logged-in trainer personally completed this training. */
+    trainerPersonallyCompleted?: boolean;
     isPersonal?: boolean;
 };
 
@@ -76,16 +78,21 @@ export default function TrainingsPage() {
                         for (const training of loadedTrainings) {
                             const logsRes = await fetch(`/api/trainings/${training._id}/logs`, { credentials: 'include' });
                             let completed = false;
+                            let trainerCompleted = false;
                             if (logsRes.ok) {
                                 const logsData = await logsRes.json();
-                                const logs = logsData.logs || [];
-                                const uniqueMembers = new Set(logs.map((log: WorkoutLog) => log.member));
+                                const logs: WorkoutLog[] = logsData.logs || [];
+                                const uniqueMembers = new Set(logs.map((log) => String(log.member)));
                                 completed = memberCount > 0 && uniqueMembers.size >= memberCount;
+                                // Check if the current trainer personally completed this training
+                                trainerCompleted = logs.some((log) => String(log.member) === String(user?._id));
                             }
 
                             setTrainings((prev) =>
                                 prev.map((item) =>
-                                    item._id === training._id ? { ...item, allMembersCompleted: completed } : item
+                                    item._id === training._id
+                                        ? { ...item, allMembersCompleted: completed, trainerPersonallyCompleted: trainerCompleted }
+                                        : item
                                 )
                             );
                         }
@@ -244,7 +251,11 @@ export default function TrainingsPage() {
                                     date={training.scheduledDate}
                                     exerciseCount={training.exercises?.length || 0}
                                     status={training.status}
-                                    userCompleted={training.allMembersCompleted || false}
+                                    userCompleted={
+                                        effectiveRole === 'trainer'
+                                            ? (training.trainerPersonallyCompleted || false)
+                                            : (training.allMembersCompleted || false)
+                                    }
                                     canManageTrainings={effectiveRole === 'trainer' || effectiveRole === 'coach'}
                                     onEdit={() => handleEdit(training._id)}
                                     onDelete={() => handleDeleteClick(training._id, training.title)}

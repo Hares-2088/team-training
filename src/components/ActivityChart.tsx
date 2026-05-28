@@ -54,17 +54,15 @@ export function ActivityChart({ isTrainer }: { isTrainer: boolean }) {
         };
 
         const fetchTrainingData = async () => {
-            // Only fetch training data for members
-            if (isTrainer) return;
-
+            // Fetch training data for both members and trainers (trainers also track personal workouts)
             try {
                 // Fetch trainings
                 const trainingsRes = await fetch('/api/trainings');
                 if (!trainingsRes.ok) throw new Error('Failed to fetch trainings');
                 const { trainings } = await trainingsRes.json();
 
-                // Fetch workout logs to check completions
-                const logsRes = await fetch('/api/workout-logs');
+                // Fetch personal workout logs to check completions (mine=true for trainers)
+                const logsRes = await fetch('/api/workout-logs?mine=true');
                 if (!logsRes.ok) throw new Error('Failed to fetch workout logs');
                 const workoutLogs = await logsRes.json();
 
@@ -258,21 +256,21 @@ export function ActivityChart({ isTrainer }: { isTrainer: boolean }) {
                                 const isHovered = hoveredDate === dateStr;
                                 const memberCount = isTrainer ? getTrainerMemberCount(day) : 0;
 
-                                // Check if this day has a scheduled training (for members)
-                                const trainingData = !isTrainer ? trainingDays.get(dateStr) : null;
+                                // Check if this day has a scheduled training (for both members and trainers)
+                                const trainingData = trainingDays.get(dateStr);
                                 const hasScheduledTraining = trainingData !== undefined;
                                 const isTrainingCompleted = trainingData?.isCompleted ?? false;
 
                                 // Determine the color:
-                                // - Blue for completed trainings (from activity data)
+                                // - Blue for completed trainings (from activity data or trainer's personal completion)
                                 // - Pale blue for scheduled but not completed (from training data)
                                 // - Transparent with border for no training to avoid looking "active" in dark mode
                                 let bgColor = 'bg-transparent dark:bg-transparent';
                                 let textColor = 'text-slate-700 dark:text-slate-300';
                                 let borderColor = 'border border-slate-200 dark:border-slate-700';
 
-                                if (active) {
-                                    // Has activity (completed workout)
+                                if (active || isTrainingCompleted) {
+                                    // Has activity (completed workout) or trainer personally completed
                                     bgColor = 'bg-blue-600 dark:bg-blue-400';
                                     textColor = 'text-white';
                                     borderColor = 'border border-blue-600 dark:border-blue-400';
@@ -305,7 +303,7 @@ export function ActivityChart({ isTrainer }: { isTrainer: boolean }) {
                                             ${isTrainer && active ? 'cursor-pointer hover:shadow-xl' : ''}
                                         `}
                                     >
-                                        {active ? <strong>{day}</strong> : day}
+                                        {(active || isTrainingCompleted) ? <strong>{day}</strong> : day}
 
                                         {/* Trainer hover tooltip */}
                                         {isHovered && isTrainer && (
@@ -325,12 +323,10 @@ export function ActivityChart({ isTrainer }: { isTrainer: boolean }) {
                                 <div className="w-4 h-4 bg-blue-600 dark:bg-blue-400 rounded border border-blue-600 dark:border-blue-400"></div>
                                 <span className="text-slate-600 dark:text-slate-400">Trained</span>
                             </div>
-                            {!isTrainer && (
-                                <div className="flex items-center gap-2">
-                                    <div className="w-4 h-4 bg-blue-50 dark:bg-blue-900/40 rounded border border-blue-200 dark:border-blue-700"></div>
-                                    <span className="text-slate-600 dark:text-slate-400">Scheduled</span>
-                                </div>
-                            )}
+                            <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 bg-blue-50 dark:bg-blue-900/40 rounded border border-blue-200 dark:border-blue-700"></div>
+                                <span className="text-slate-600 dark:text-slate-400">Scheduled</span>
+                            </div>
                             <div className="flex items-center gap-2">
                                 <div className="w-4 h-4 bg-transparent dark:bg-transparent rounded border border-slate-200 dark:border-slate-700"></div>
                                 <span className="text-slate-600 dark:text-slate-400">No training</span>

@@ -76,7 +76,8 @@ export default function Dashboard() {
             try {
                 const [trainingsRes, logsRes] = await Promise.all([
                     fetch('/api/trainings', { credentials: 'include' }),
-                    fetch('/api/workout-logs', { credentials: 'include' }),
+                    // Use ?mine=true so trainers get their own personal logs for stats
+                    fetch('/api/workout-logs?mine=true', { credentials: 'include' }),
                 ]);
 
                 if (trainingsRes.ok) {
@@ -202,53 +203,55 @@ export default function Dashboard() {
                     </p>
                 </div>
 
-                {!isTrainerView && (
-                    <Card className="border-0 shadow-lg">
-                        <CardHeader>
-                            <CardTitle>Today’s Workout</CardTitle>
-                            <CardDescription>Choose team → start workout → log sets → finish → review progress</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            {dataLoading ? (
-                                <p className="text-sm text-slate-500 dark:text-slate-400">Loading today’s training...</p>
-                            ) : todaysWorkout ? (
-                                <>
-                                    <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900">
-                                        <p className="font-semibold text-slate-900 dark:text-white">{todaysWorkout.title}</p>
-                                        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                                            {formatDateLabel(todaysWorkout.scheduledDate, {
-                                                weekday: 'short',
-                                                month: 'short',
-                                                day: 'numeric',
-                                                year: 'numeric',
-                                            })}
-                                        </p>
-                                    </div>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                        <Link href={`/dashboard/log-workout/${todaysWorkout._id}`}>
-                                            <Button className="w-full h-11">
-                                                <PlayCircle className="w-4 h-4 mr-2" />
-                                                Quick Start
-                                            </Button>
-                                        </Link>
-                                        <Link href={`/trainings/${todaysWorkout._id}`}>
-                                            <Button variant="outline" className="w-full h-11">
-                                                View Workout
-                                            </Button>
-                                        </Link>
-                                    </div>
-                                </>
-                            ) : (
-                                <div className="space-y-3">
-                                    <p className="text-sm text-slate-600 dark:text-slate-400">No scheduled workout for today yet.</p>
-                                    <Link href="/trainings">
-                                        <Button variant="outline">Browse Workout Plans</Button>
+                <Card className="border-0 shadow-lg">
+                    <CardHeader>
+                        <CardTitle>Today's Workout</CardTitle>
+                        <CardDescription>
+                            {isTrainerView
+                                ? 'Your scheduled training for today'
+                                : "Choose team → start workout → log sets → finish → review progress"}
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        {dataLoading ? (
+                            <p className="text-sm text-slate-500 dark:text-slate-400">Loading today's training...</p>
+                        ) : todaysWorkout ? (
+                            <>
+                                <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900">
+                                    <p className="font-semibold text-slate-900 dark:text-white">{todaysWorkout.title}</p>
+                                    <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                                        {formatDateLabel(todaysWorkout.scheduledDate, {
+                                            weekday: 'short',
+                                            month: 'short',
+                                            day: 'numeric',
+                                            year: 'numeric',
+                                        })}
+                                    </p>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <Link href={`/dashboard/log-workout/${todaysWorkout._id}`}>
+                                        <Button className="w-full h-11">
+                                            <PlayCircle className="w-4 h-4 mr-2" />
+                                            Quick Start
+                                        </Button>
+                                    </Link>
+                                    <Link href={`/trainings/${todaysWorkout._id}`}>
+                                        <Button variant="outline" className="w-full h-11">
+                                            View Workout
+                                        </Button>
                                     </Link>
                                 </div>
-                            )}
-                        </CardContent>
-                    </Card>
-                )}
+                            </>
+                        ) : (
+                            <div className="space-y-3">
+                                <p className="text-sm text-slate-600 dark:text-slate-400">No scheduled workout for today yet.</p>
+                                <Link href="/trainings">
+                                    <Button variant="outline">Browse Workout Plans</Button>
+                                </Link>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
 
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                     <Card className="border-0 shadow-sm">

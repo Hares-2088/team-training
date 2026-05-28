@@ -6,6 +6,7 @@ import { format, parseISO } from 'date-fns';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Navbar } from '@/components/Navbar';
 
 interface Member {
     memberId: string;
@@ -52,6 +53,7 @@ export default function ActivityDetailPage() {
     if (isLoading) {
         return (
             <div className="min-h-screen bg-white dark:bg-slate-950">
+                <Navbar currentPage="dashboard" />
                 <div className="max-w-4xl mx-auto px-4 py-8">
                     <div className="text-center py-8 text-slate-500">Loading activity details...</div>
                 </div>
@@ -61,6 +63,7 @@ export default function ActivityDetailPage() {
 
     return (
         <div className="min-h-screen bg-white dark:bg-slate-950">
+            <Navbar currentPage="dashboard" />
             <div className="max-w-4xl mx-auto px-4 py-8">
                 {/* Header */}
                 <div className="mb-8">
