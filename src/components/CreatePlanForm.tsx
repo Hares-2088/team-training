@@ -202,7 +202,7 @@ export function CreatePlanForm({
                         <Label htmlFor="plan-title">Plan Name</Label>
                         <Input
                             id="plan-title"
-                            placeholder="e.g., Losing Fat"
+                            placeholder="e.g., Fat Loss Program"
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
                             required

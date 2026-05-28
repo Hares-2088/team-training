@@ -25,7 +25,7 @@ export default function CreateTrainingPageContent() {
         setIsLoading(true);
         setError(null);
         try {
-            if (!data.teamId) throw new Error('Team is required');
+            if (!data.teamId) throw new Error('Please select a team');
             if (!data.sessions || data.sessions.length === 0) throw new Error('At least one training session is required');
 
             // 1. Create the plan
