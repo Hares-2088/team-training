@@ -35,6 +35,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         if (!plan) {
             return NextResponse.json({ error: 'Plan not found' }, { status: 404 });
         }
+        if (!plan.team) {
+            return NextResponse.json({ error: 'Plan has no team' }, { status: 400 });
+        }
 
         const team = await Team.findById(plan.team);
         if (!team) {
@@ -80,7 +83,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
             team: plan.team,
             scheduledDate: new Date(),
             status: 'scheduled',
-            isPersonal: plan.isPersonal === true,
+            isPersonal: Boolean(plan.isPersonal),
             createdBy: plan.isPersonal ? plan.createdBy : undefined,
             plan: plan._id,
         });
