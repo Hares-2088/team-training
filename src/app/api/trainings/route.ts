@@ -1,5 +1,6 @@
 import { connectDB } from '@/lib/db/mongodb';
 import Training from '@/models/Training';
+import WorkoutPlan from '@/models/WorkoutPlan';
 import Team from '@/models/Team';
 import User from '@/models/User';
 import { NextRequest, NextResponse } from 'next/server';
@@ -144,6 +145,7 @@ export async function POST(request: NextRequest) {
             status: body.status || 'scheduled',
             isPersonal: isPersonal,
             createdBy: isPersonal ? decoded.userId : undefined,
+            plan: body.planId || undefined,
         });
 
         return NextResponse.json({ training }, { status: 201 });

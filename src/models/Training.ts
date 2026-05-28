@@ -40,6 +40,10 @@ const trainingSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: 'User',
         },
+        plan: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'WorkoutPlan',
+        },
     },
     {
         timestamps: true,

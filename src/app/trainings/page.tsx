@@ -4,168 +4,86 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { TrainingCard } from '@/components/TrainingCard';
+import { PlanCard } from '@/components/PlanCard';
 import { Navbar } from '@/components/Navbar';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
-type Training = {
+type Plan = {
     _id: string;
     title: string;
     description?: string;
-    scheduledDate: string;
-    exercises?: { name: string }[];
-    status: 'scheduled' | 'completed' | 'cancelled';
-    team?: string;
-    allMembersCompleted?: boolean;
-    /** Whether the currently logged-in trainer personally completed this training. */
-    trainerPersonallyCompleted?: boolean;
     isPersonal?: boolean;
-};
-
-type WorkoutLog = {
-    _id: string;
-    training: string | { _id: string };
-    member: string;
-};
-
-type Team = {
-    _id: string;
-    members: Array<{ _id: string }> | string[];
+    trainingCount: number;
+    createdBy?: string;
 };
 
 export default function TrainingsPage() {
     const { user, activeTeam } = useAuth();
     const router = useRouter();
-    const [trainings, setTrainings] = useState<Training[]>([]);
+    const [plans, setPlans] = useState<Plan[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const effectiveRole = activeTeam.role || user?.role || null;
-    const [filter, setFilter] = useState<'all' | 'scheduled' | 'completed' | 'personal'>('all');
-    const [deleteDialog, setDeleteDialog] = useState<{ isOpen: boolean; trainingId: string; title: string }>({
+    const [filter, setFilter] = useState<'all' | 'team' | 'personal'>('all');
+    const [deleteDialog, setDeleteDialog] = useState<{ isOpen: boolean; planId: string; title: string }>({
         isOpen: false,
-        trainingId: '',
+        planId: '',
         title: '',
     });
     const [isDeleting, setIsDeleting] = useState(false);
 
     useEffect(() => {
-        const fetchData = async () => {
+        const fetchPlans = async () => {
             try {
-                const trainingsRes = await fetch('/api/trainings', { credentials: 'include' });
-
-                if (!trainingsRes.ok) {
-                    const payload = await trainingsRes.json();
-                    throw new Error(payload.error || 'Failed to load trainings');
+                const res = await fetch('/api/plans', { credentials: 'include' });
+                if (!res.ok) {
+                    const payload = await res.json();
+                    throw new Error(payload.error || 'Failed to load plans');
                 }
-
-                const trainingsData = await trainingsRes.json();
-                const loadedTrainings = trainingsData.trainings || [];
-                setTrainings(loadedTrainings);
-                setIsLoading(false);
-
-                // For trainers/coaches: check if all members completed each training
-                if (effectiveRole === 'trainer' || effectiveRole === 'coach') {
-                    void (async () => {
-                        const teamRes = await fetch(`/api/teams/${activeTeam.teamId}`, { credentials: 'include' });
-                        if (!teamRes.ok) return;
-
-                        const teamData = await teamRes.json();
-                        const team: Team = teamData.team;
-                        const memberCount = team.members?.length || 0;
-
-                        for (const training of loadedTrainings) {
-                            const logsRes = await fetch(`/api/trainings/${training._id}/logs`, { credentials: 'include' });
-                            let completed = false;
-                            let trainerCompleted = false;
-                            if (logsRes.ok) {
-                                const logsData = await logsRes.json();
-                                const logs: WorkoutLog[] = logsData.logs || [];
-                                const uniqueMembers = new Set(logs.map((log) => String(log.member)));
-                                completed = memberCount > 0 && uniqueMembers.size >= memberCount;
-                                // Check if the current trainer personally completed this training
-                                if (user?._id) {
-                                    trainerCompleted = logs.some((log) => String(log.member) === String(user._id));
-                                }
-                            }
-
-                            setTrainings((prev) =>
-                                prev.map((item) =>
-                                    item._id === training._id
-                                        ? { ...item, allMembersCompleted: completed, trainerPersonallyCompleted: trainerCompleted }
-                                        : item
-                                )
-                            );
-                        }
-                    })();
-                } else {
-                    const workoutLogsRes = await fetch('/api/workout-logs', { credentials: 'include' });
-                    const workoutLogsData = workoutLogsRes.ok ? await workoutLogsRes.json() : [];
-
-                    const completedTrainingIds = new Set(
-                        workoutLogsData
-                            .filter((log: WorkoutLog) => log.training)
-                            .map((log: WorkoutLog) => typeof log.training === 'string' ? log.training : log.training._id)
-                    );
-
-                    setTrainings((prev) =>
-                        prev.map((training) => ({
-                            ...training,
-                            allMembersCompleted: completedTrainingIds.has(training._id),
-                        }))
-                    );
-                }
+                const data = await res.json();
+                setPlans(data.plans || []);
             } catch (err) {
-                const message = err instanceof Error ? err.message : 'Failed to load trainings';
-                setError(message);
+                setError(err instanceof Error ? err.message : 'Failed to load plans');
+            } finally {
                 setIsLoading(false);
             }
         };
+        fetchPlans();
+    }, [activeTeam.teamId]);
 
-        fetchData();
-    }, [effectiveRole, activeTeam.teamId]);
-
-    const filteredTrainings = trainings.filter((training) => {
+    const filteredPlans = plans.filter((plan) => {
         if (filter === 'all') return true;
-
-        // Determine if training is completed
-        const isCompleted = training.allMembersCompleted;
-
-        if (filter === 'completed') return isCompleted;
-        if (filter === 'scheduled') return !isCompleted;
-        if (filter === 'personal') return training.isPersonal === true;
-        return training.status === filter;
+        if (filter === 'personal') return plan.isPersonal === true;
+        if (filter === 'team') return !plan.isPersonal;
+        return true;
     });
 
-    const handleEdit = (trainingId: string) => {
-        router.push(`/trainings/${trainingId}/edit`);
+    const handleEdit = (planId: string) => {
+        router.push(`/plans/${planId}`);
     };
 
-    const handleDeleteClick = (trainingId: string, title: string) => {
-        setDeleteDialog({ isOpen: true, trainingId, title });
+    const handleDeleteClick = (planId: string, title: string) => {
+        setDeleteDialog({ isOpen: true, planId, title });
     };
 
     const handleConfirmDelete = async () => {
-        const trainingId = deleteDialog.trainingId;
+        const planId = deleteDialog.planId;
         setIsDeleting(true);
-
         try {
-            const res = await fetch(`/api/trainings/${trainingId}`, {
+            const res = await fetch(`/api/plans/${planId}`, {
                 method: 'DELETE',
                 credentials: 'include',
             });
-
             if (!res.ok) {
                 const payload = await res.json();
-                throw new Error(payload.error || 'Failed to delete training');
+                throw new Error(payload.error || 'Failed to delete plan');
             }
-
-            // Remove from local state
-            setTrainings((prev) => prev.filter((t) => t._id !== trainingId));
-            setDeleteDialog({ isOpen: false, trainingId: '', title: '' });
+            setPlans((prev) => prev.filter((p) => p._id !== planId));
+            setDeleteDialog({ isOpen: false, planId: '', title: '' });
         } catch (err) {
-            alert(err instanceof Error ? err.message : 'Failed to delete training');
+            alert(err instanceof Error ? err.message : 'Failed to delete plan');
         } finally {
             setIsDeleting(false);
         }
@@ -175,13 +93,12 @@ export default function TrainingsPage() {
         <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-50">
             <Navbar currentPage="workouts" />
 
-            {/* Main Content */}
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
                 {/* Page Header */}
                 <div className="flex justify-between items-center mb-8">
                     <div>
                         <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Workout Plans</h2>
-                        <p className="text-slate-600 dark:text-slate-400 mt-1">View and manage your team workouts</p>
+                        <p className="text-slate-600 dark:text-slate-400 mt-1">Plans composed of multiple training sessions</p>
                     </div>
                     <div className="flex flex-col sm:flex-row gap-2">
                         {(effectiveRole === 'trainer' || effectiveRole === 'coach') && (
@@ -202,38 +119,23 @@ export default function TrainingsPage() {
 
                 {/* Filter Tabs */}
                 <div className="flex gap-2 mb-6">
-                    <Button
-                        variant={filter === 'all' ? 'default' : 'outline'}
-                        onClick={() => setFilter('all')}
-                    >
+                    <Button variant={filter === 'all' ? 'default' : 'outline'} onClick={() => setFilter('all')}>
                         All
                     </Button>
-                    <Button
-                        variant={filter === 'scheduled' ? 'default' : 'outline'}
-                        onClick={() => setFilter('scheduled')}
-                    >
-                        Scheduled
+                    <Button variant={filter === 'team' ? 'default' : 'outline'} onClick={() => setFilter('team')}>
+                        Team
                     </Button>
-                    <Button
-                        variant={filter === 'completed' ? 'default' : 'outline'}
-                        onClick={() => setFilter('completed')}
-                    >
-                        Completed
-                    </Button>
-                    <Button
-                        variant={filter === 'personal' ? 'default' : 'outline'}
-                        onClick={() => setFilter('personal')}
-                    >
+                    <Button variant={filter === 'personal' ? 'default' : 'outline'} onClick={() => setFilter('personal')}>
                         Personal
                     </Button>
                 </div>
 
-                {/* Trainings Grid */}
+                {/* Plans Grid */}
                 <div className="grid grid-cols-1 gap-6 mb-12">
                     {isLoading ? (
                         <Card className="border-0 shadow-lg">
                             <CardContent className="py-12 text-center">
-                                <p className="text-gray-500 text-lg">Loading trainings...</p>
+                                <p className="text-gray-500 text-lg">Loading plans...</p>
                             </CardContent>
                         </Card>
                     ) : error ? (
@@ -242,31 +144,25 @@ export default function TrainingsPage() {
                                 <p className="text-lg">{error}</p>
                             </CardContent>
                         </Card>
-                    ) : trainings.length > 0 ? (
-                        filteredTrainings.length > 0 ? (
-                            filteredTrainings.map((training) => (
-                                <TrainingCard
-                                    key={training._id}
-                                    id={training._id}
-                                    title={training.title}
-                                    description={training.description || ''}
-                                    date={training.scheduledDate}
-                                    exerciseCount={training.exercises?.length || 0}
-                                    status={training.status}
-                                    userCompleted={
-                                        effectiveRole === 'trainer'
-                                            ? (training.trainerPersonallyCompleted || false)
-                                            : (training.allMembersCompleted || false)
-                                    }
-                                    canManageTrainings={effectiveRole === 'trainer' || effectiveRole === 'coach'}
-                                    onEdit={() => handleEdit(training._id)}
-                                    onDelete={() => handleDeleteClick(training._id, training.title)}
+                    ) : plans.length > 0 ? (
+                        filteredPlans.length > 0 ? (
+                            filteredPlans.map((plan) => (
+                                <PlanCard
+                                    key={plan._id}
+                                    id={plan._id}
+                                    title={plan.title}
+                                    description={plan.description}
+                                    trainingCount={plan.trainingCount}
+                                    isPersonal={plan.isPersonal}
+                                    canManage={effectiveRole === 'trainer' || effectiveRole === 'coach'}
+                                    onEdit={() => handleEdit(plan._id)}
+                                    onDelete={() => handleDeleteClick(plan._id, plan.title)}
                                 />
                             ))
                         ) : (
                             <Card className="border-0 shadow-lg">
                                 <CardContent className="py-12 text-center">
-                                    <p className="text-gray-500 dark:text-gray-400 text-lg">No {filter} trainings found</p>
+                                    <p className="text-gray-500 dark:text-gray-400 text-lg">No {filter} plans found</p>
                                     <p className="text-gray-400 dark:text-gray-500 mt-2">Try selecting a different filter</p>
                                 </CardContent>
                             </Card>
@@ -274,7 +170,7 @@ export default function TrainingsPage() {
                     ) : (
                         <Card className="border-0 shadow-lg">
                             <CardContent className="py-12 text-center">
-                                <p className="text-gray-500 text-lg">No trainings yet</p>
+                                <p className="text-gray-500 text-lg">No plans yet</p>
                                 <p className="text-gray-400 mt-2">Create your first plan to get started</p>
                                 {(effectiveRole === 'trainer' || effectiveRole === 'coach') && (
                                     <Link href="/trainings/create" className="mt-4 inline-block">
@@ -289,28 +185,24 @@ export default function TrainingsPage() {
 
             {/* Delete Confirmation Dialog */}
             <Dialog open={deleteDialog.isOpen} onOpenChange={(open) => {
-                if (!open) setDeleteDialog({ isOpen: false, trainingId: '', title: '' });
+                if (!open) setDeleteDialog({ isOpen: false, planId: '', title: '' });
             }}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Delete Training</DialogTitle>
+                        <DialogTitle>Delete Plan</DialogTitle>
                         <DialogDescription>
-                            Are you sure you want to delete &quot;<span className="font-semibold">{deleteDialog.title}</span>&quot;? This action cannot be undone.
+                            Are you sure you want to delete &quot;<span className="font-semibold">{deleteDialog.title}</span>&quot;? All training sessions in this plan will also be deleted. This action cannot be undone.
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter className="gap-2">
                         <Button
                             variant="outline"
-                            onClick={() => setDeleteDialog({ isOpen: false, trainingId: '', title: '' })}
+                            onClick={() => setDeleteDialog({ isOpen: false, planId: '', title: '' })}
                             disabled={isDeleting}
                         >
                             Cancel
                         </Button>
-                        <Button
-                            variant="destructive"
-                            onClick={handleConfirmDelete}
-                            disabled={isDeleting}
-                        >
+                        <Button variant="destructive" onClick={handleConfirmDelete} disabled={isDeleting}>
                             {isDeleting ? 'Deleting...' : 'Delete'}
                         </Button>
                     </DialogFooter>
