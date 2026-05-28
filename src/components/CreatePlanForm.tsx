@@ -249,7 +249,7 @@ export function CreatePlanForm({
                             </Button>
                         </div>
 
-                        {workouts.map((session, si) => (
+                        {workouts.map((workout, si) => (
                             <div key={`session-${si}`} className="border rounded-lg p-4 space-y-4 bg-slate-50 dark:bg-slate-900">
                                 <div className="flex justify-between items-center">
                                     <h4 className="font-medium text-slate-800 dark:text-slate-200">
@@ -273,7 +273,7 @@ export function CreatePlanForm({
                                         <Label className="text-xs">Workout Title</Label>
                                         <Input
                                             placeholder="e.g., Run + Core"
-                                            value={session.title}
+                                            value={workout.title}
                                             onChange={(e) => updateWorkoutField(si, 'title', e.target.value)}
                                             required
                                             className="mt-1"
@@ -284,19 +284,19 @@ export function CreatePlanForm({
                                         <div className="mt-1">
                                             <DatePicker
                                                 id={`date-${si}`}
-                                                value={session.scheduledDate}
+                                                value={workout.scheduledDate}
                                                 onChange={(date) => updateWorkoutField(si, 'scheduledDate', date)}
                                             />
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* Exercises for this session */}
+                                {/* Exercises for this workout */}
                                 <div className="space-y-3">
                                     <Label className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
                                         Exercises
                                     </Label>
-                                    {session.exercises.map((ex, ei) => (
+                                    {workout.exercises.map((ex, ei) => (
                                         <div key={`ex-${si}-${ei}`} className="p-3 bg-white dark:bg-slate-800 border rounded-lg space-y-3">
                                             <div className="grid grid-cols-2 gap-3">
                                                 <div>
@@ -352,7 +352,7 @@ export function CreatePlanForm({
                                                     className="mt-1"
                                                 />
                                             </div>
-                                            {session.exercises.length > 1 && (
+                                            {workout.exercises.length > 1 && (
                                                 <Button
                                                     type="button"
                                                     variant="destructive"
