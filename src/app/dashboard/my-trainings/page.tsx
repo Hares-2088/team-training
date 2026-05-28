@@ -41,7 +41,8 @@ export default function MyTrainingsPage() {
 
     const fetchWorkoutLogs = async () => {
         try {
-            const response = await fetch('/api/workout-logs');
+            // Use ?mine=true to always fetch the current user's own logs (even for trainers)
+            const response = await fetch('/api/workout-logs?mine=true');
             if (response.ok) {
                 const data = await response.json();
                 setWorkoutLogs(data);

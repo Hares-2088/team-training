@@ -15,6 +15,19 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
+        const url = new URL(request.url);
+        const mineOnly = url.searchParams.get('mine') === 'true';
+
+        // When mine=true (or for non-trainer roles), always return only the current user's own logs.
+        // For trainers without mine=true, return all team member logs (for team monitoring).
+        if (mineOnly) {
+            const workoutLogs = await WorkoutLog.find({ member: currentUser.userId })
+                .populate('training', 'title scheduledDate')
+                .populate('member', 'name')
+                .sort({ completedAt: -1 });
+            return NextResponse.json(workoutLogs);
+        }
+
         const activeTeamId = request.cookies.get('active-team')?.value || null;
 
         // Members/coaches: always can see their own logs (all teams)
