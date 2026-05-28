@@ -4,6 +4,7 @@ import WorkoutTemplate from '@/models/WorkoutTemplate';
 import Training from '@/models/Training';
 import Team from '@/models/Team';
 import { verifyToken } from '@/lib/auth';
+import mongoose from 'mongoose';
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
@@ -51,6 +52,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         const training = await Training.create({
             title: template.title,
             description: template.description || '',
+            planId: new mongoose.Types.ObjectId().toString(),
+            planName: template.title,
             exercises: template.exercises.map((ex: any) => ({
                 name: ex.name,
                 sets: ex.sets,

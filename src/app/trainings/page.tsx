@@ -2,17 +2,20 @@
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { TrainingCard } from '@/components/TrainingCard';
 import { Navbar } from '@/components/Navbar';
 import { useAuth } from '@/contexts/AuthContext';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
+import { formatDateLabel } from '@/lib/date';
 
 type Training = {
     _id: string;
     title: string;
+    planId?: string;
+    planName?: string;
     description?: string;
     scheduledDate: string;
     exercises?: { name: string }[];
@@ -20,6 +23,17 @@ type Training = {
     team?: string;
     allMembersCompleted?: boolean;
     isPersonal?: boolean;
+};
+
+type PlanSummary = {
+    id: string;
+    title: string;
+    description?: string;
+    trainingCount: number;
+    completedCount: number;
+    nextDate?: string;
+    isPersonal: boolean;
+    trainings: Training[];
 };
 
 type WorkoutLog = {
@@ -36,6 +50,7 @@ type Team = {
 export default function TrainingsPage() {
     const { user, activeTeam } = useAuth();
     const router = useRouter();
+    const searchParams = useSearchParams();
     const [trainings, setTrainings] = useState<Training[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -47,6 +62,7 @@ export default function TrainingsPage() {
         title: '',
     });
     const [isDeleting, setIsDeleting] = useState(false);
+    const selectedPlanId = searchParams.get('planId');
 
     useEffect(() => {
         const fetchData = async () => {
@@ -117,16 +133,71 @@ export default function TrainingsPage() {
         fetchData();
     }, [effectiveRole, activeTeam.teamId]);
 
-    const filteredTrainings = trainings.filter((training) => {
+    const visibleTrainings = selectedPlanId
+        ? trainings.filter((training) => (training.planId || training._id) === selectedPlanId)
+        : trainings;
+
+    const filteredTrainings = visibleTrainings.filter((training) => {
         if (filter === 'all') return true;
 
-        // Determine if training is completed
         const isCompleted = training.allMembersCompleted;
-
         if (filter === 'completed') return isCompleted;
         if (filter === 'scheduled') return !isCompleted;
         if (filter === 'personal') return training.isPersonal === true;
         return training.status === filter;
+    });
+
+    const planSummaries = useMemo<PlanSummary[]>(() => {
+        const plansMap = new Map<string, PlanSummary>();
+
+        for (const training of trainings) {
+            const id = training.planId || training._id;
+            const existing = plansMap.get(id);
+
+            if (!existing) {
+                plansMap.set(id, {
+                    id,
+                    title: training.planName || training.title,
+                    description: training.description,
+                    trainingCount: 1,
+                    completedCount: training.allMembersCompleted ? 1 : 0,
+                    nextDate: training.scheduledDate,
+                    isPersonal: training.isPersonal === true,
+                    trainings: [training],
+                });
+                continue;
+            }
+
+            existing.trainingCount += 1;
+            existing.completedCount += training.allMembersCompleted ? 1 : 0;
+            existing.isPersonal = existing.isPersonal && training.isPersonal === true;
+            existing.trainings.push(training);
+
+            if (!existing.description && training.description) {
+                existing.description = training.description;
+            }
+            if (new Date(training.scheduledDate) < new Date(existing.nextDate || training.scheduledDate)) {
+                existing.nextDate = training.scheduledDate;
+            }
+        }
+
+        return Array.from(plansMap.values())
+            .map((plan) => ({
+                ...plan,
+                trainings: plan.trainings.sort(
+                    (a, b) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime()
+                ),
+            }))
+            .sort((a, b) => new Date(a.nextDate || 0).getTime() - new Date(b.nextDate || 0).getTime());
+    }, [trainings]);
+
+    const filteredPlans = planSummaries.filter((plan) => {
+        if (filter === 'all') return true;
+        const allCompleted = plan.trainingCount > 0 && plan.completedCount >= plan.trainingCount;
+        if (filter === 'completed') return allCompleted;
+        if (filter === 'scheduled') return !allCompleted;
+        if (filter === 'personal') return plan.isPersonal;
+        return true;
     });
 
     const handleEdit = (trainingId: string) => {
@@ -172,7 +243,9 @@ export default function TrainingsPage() {
                 <div className="flex justify-between items-center mb-8">
                     <div>
                         <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Workout Plans</h2>
-                        <p className="text-slate-600 dark:text-slate-400 mt-1">View and manage your team workouts</p>
+                        <p className="text-slate-600 dark:text-slate-400 mt-1">
+                            {selectedPlanId ? 'Trainings in selected plan' : 'View and manage plans composed of trainings'}
+                        </p>
                     </div>
                     <div className="flex flex-col sm:flex-row gap-2">
                         {(effectiveRole === 'trainer' || effectiveRole === 'coach') && (
@@ -188,6 +261,11 @@ export default function TrainingsPage() {
                         <Link href="/library" className="sm:flex-none">
                             <Button variant="outline" size="lg" className="w-full sm:w-auto">Workouts Library</Button>
                         </Link>
+                        {selectedPlanId && (
+                            <Link href="/trainings" className="sm:flex-none">
+                                <Button variant="outline" size="lg" className="w-full sm:w-auto">Back to Plans</Button>
+                            </Link>
+                        )}
                     </div>
                 </div>
 
@@ -219,7 +297,7 @@ export default function TrainingsPage() {
                     </Button>
                 </div>
 
-                {/* Trainings Grid */}
+                {/* Plans/Trainings Grid */}
                 <div className="grid grid-cols-1 gap-6 mb-12">
                     {isLoading ? (
                         <Card className="border-0 shadow-lg">
@@ -234,26 +312,56 @@ export default function TrainingsPage() {
                             </CardContent>
                         </Card>
                     ) : trainings.length > 0 ? (
-                        filteredTrainings.length > 0 ? (
-                            filteredTrainings.map((training) => (
-                                <TrainingCard
-                                    key={training._id}
-                                    id={training._id}
-                                    title={training.title}
-                                    description={training.description || ''}
-                                    date={training.scheduledDate}
-                                    exerciseCount={training.exercises?.length || 0}
-                                    status={training.status}
-                                    userCompleted={training.allMembersCompleted || false}
-                                    canManageTrainings={effectiveRole === 'trainer' || effectiveRole === 'coach'}
-                                    onEdit={() => handleEdit(training._id)}
-                                    onDelete={() => handleDeleteClick(training._id, training.title)}
-                                />
+                        selectedPlanId ? (
+                            filteredTrainings.length > 0 ? (
+                                filteredTrainings.map((training) => (
+                                    <TrainingCard
+                                        key={training._id}
+                                        id={training._id}
+                                        title={training.title}
+                                        description={training.description || ''}
+                                        date={training.scheduledDate}
+                                        exerciseCount={training.exercises?.length || 0}
+                                        status={training.status}
+                                        userCompleted={training.allMembersCompleted || false}
+                                        canManageTrainings={effectiveRole === 'trainer' || effectiveRole === 'coach'}
+                                        onEdit={() => handleEdit(training._id)}
+                                        onDelete={() => handleDeleteClick(training._id, training.title)}
+                                    />
+                                ))
+                            ) : (
+                                <Card className="border-0 shadow-lg">
+                                    <CardContent className="py-12 text-center">
+                                        <p className="text-gray-500 dark:text-gray-400 text-lg">No trainings found for this plan</p>
+                                        <p className="text-gray-400 dark:text-gray-500 mt-2">Try selecting a different filter</p>
+                                    </CardContent>
+                                </Card>
+                            )
+                        ) : filteredPlans.length > 0 ? (
+                            filteredPlans.map((plan) => (
+                                <Card key={plan.id} className="hover:shadow-lg transition-shadow">
+                                    <CardHeader>
+                                        <CardTitle>{plan.title}</CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="space-y-4">
+                                        {plan.description && (
+                                            <p className="text-sm text-slate-600 dark:text-slate-400">{plan.description}</p>
+                                        )}
+                                        <div className="text-sm text-slate-600 dark:text-slate-400 space-y-1">
+                                            <p>{plan.trainingCount} trainings</p>
+                                            <p>{plan.completedCount}/{plan.trainingCount} completed</p>
+                                            {plan.nextDate && <p>Next: {formatDateLabel(plan.nextDate)}</p>}
+                                        </div>
+                                        <Link href={`/trainings?planId=${plan.id}`}>
+                                            <Button>View Trainings</Button>
+                                        </Link>
+                                    </CardContent>
+                                </Card>
                             ))
                         ) : (
                             <Card className="border-0 shadow-lg">
                                 <CardContent className="py-12 text-center">
-                                    <p className="text-gray-500 dark:text-gray-400 text-lg">No {filter} trainings found</p>
+                                    <p className="text-gray-500 dark:text-gray-400 text-lg">No {filter} plans found</p>
                                     <p className="text-gray-400 dark:text-gray-500 mt-2">Try selecting a different filter</p>
                                 </CardContent>
                             </Card>

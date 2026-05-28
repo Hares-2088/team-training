@@ -55,6 +55,7 @@ export default function CreateTrainingPageContent() {
             }
 
             const expandedDates = Array.from(expandedDateSet).sort();
+            const generatedPlanId = crypto.randomUUID();
 
             // Create a training for each expanded date in the plan
             const createdTrainings = [];
@@ -65,6 +66,8 @@ export default function CreateTrainingPageContent() {
                     body: JSON.stringify({
                         title: data.title,
                         description: data.description,
+                        planId: generatedPlanId,
+                        planName: data.title,
                         scheduledDate: scheduledDate,
                         exercises: data.exercises,
                         team: data.teamId,

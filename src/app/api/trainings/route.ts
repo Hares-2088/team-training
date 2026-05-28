@@ -5,6 +5,7 @@ import User from '@/models/User';
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken } from '@/lib/auth';
 import { toDateAtLocalMidnight } from '@/lib/date';
+import mongoose from 'mongoose';
 
 const REQUIRED_FIELDS = ['title', 'team', 'scheduledDate'] as const;
 
@@ -135,9 +136,18 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Invalid scheduledDate' }, { status: 400 });
         }
 
+        const planId = typeof body.planId === 'string' && body.planId.trim()
+            ? body.planId.trim()
+            : new mongoose.Types.ObjectId().toString();
+        const planName = typeof body.planName === 'string' && body.planName.trim()
+            ? body.planName.trim()
+            : body.title;
+
         const training = await Training.create({
             title: body.title,
             description: body.description,
+            planId,
+            planName,
             exercises: body.exercises || [],
             team: body.team,
             scheduledDate,

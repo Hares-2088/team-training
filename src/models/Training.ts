@@ -9,6 +9,15 @@ const trainingSchema = new mongoose.Schema(
         description: {
             type: String,
         },
+        planId: {
+            type: String,
+            required: true,
+            index: true,
+        },
+        planName: {
+            type: String,
+            required: true,
+        },
         exercises: [
             {
                 name: String,
