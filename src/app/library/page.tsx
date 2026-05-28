@@ -116,8 +116,9 @@ export default function WorkoutLibraryPage() {
     const isCoach = role === 'coach';
     const canAddToPlan = isTrainer || isCoach;
 
-    const addToPlan = async (templateId: string) => {
-        if (!selectedPlanId) {
+    const addToPlan = async (templateId: string, planIdOverride?: string) => {
+        const targetPlanId = planIdOverride ?? selectedPlanId;
+        if (!targetPlanId) {
             alert('Please select a plan');
             return;
         }
@@ -128,7 +129,7 @@ export default function WorkoutLibraryPage() {
                 method: 'POST',
                 credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ planId: selectedPlanId }),
+                body: JSON.stringify({ planId: targetPlanId }),
             });
 
             if (!res.ok) {
@@ -274,7 +275,10 @@ export default function WorkoutLibraryPage() {
                                     {plans.map((plan) => (
                                         <button
                                             key={plan._id}
-                                            onClick={() => setSelectedPlanId(plan._id)}
+                                            onClick={() => {
+                                                setSelectedPlanId(plan._id);
+                                                addToPlan(selectedTemplateId, plan._id);
+                                            }}
                                             className={`w-full p-3 rounded-lg border-2 text-left transition-colors ${selectedPlanId === plan._id
                                                 ? 'border-blue-600 bg-blue-50 dark:bg-blue-950'
                                                 : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
@@ -295,13 +299,6 @@ export default function WorkoutLibraryPage() {
                                     onClick={() => setShowPlanSelector(false)}
                                 >
                                     Cancel
-                                </Button>
-                                <Button
-                                    className="flex-1"
-                                    disabled={!selectedPlanId || addingToPlan}
-                                    onClick={() => addToPlan(selectedTemplateId)}
-                                >
-                                    {addingToPlan ? 'Adding...' : 'Add to Plan'}
                                 </Button>
                             </div>
                         </CardContent>

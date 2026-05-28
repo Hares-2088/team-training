@@ -67,8 +67,9 @@ export default function TemplateDetailPage() {
     const isCoach = role === 'coach';
     const canAddToPlan = isTrainer || isCoach;
 
-    const addToPlan = async () => {
-        if (!selectedPlanId) {
+    const addToPlan = async (planIdOverride?: string) => {
+        const targetPlanId = planIdOverride ?? selectedPlanId;
+        if (!targetPlanId) {
             alert('Please select a plan');
             return;
         }
@@ -79,7 +80,7 @@ export default function TemplateDetailPage() {
                 method: 'POST',
                 credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ planId: selectedPlanId }),
+                body: JSON.stringify({ planId: targetPlanId }),
             });
 
             if (!res.ok) {
@@ -209,6 +210,7 @@ export default function TemplateDetailPage() {
                                                 key={plan._id}
                                                 onClick={() => {
                                                     setSelectedPlanId(plan._id);
+                                                    addToPlan(plan._id);
                                                 }}
                                                 className={`w-full text-left p-3 rounded-lg border-2 transition-colors ${selectedPlanId === plan._id
                                                     ? 'border-blue-600 bg-blue-50 dark:bg-blue-950'
@@ -230,13 +232,6 @@ export default function TemplateDetailPage() {
                                         onClick={() => setShowPlanSelector(false)}
                                     >
                                         Cancel
-                                    </Button>
-                                    <Button
-                                        className="flex-1"
-                                        disabled={!selectedPlanId || addingToPlan}
-                                        onClick={addToPlan}
-                                    >
-                                        {addingToPlan ? 'Adding...' : 'Add to Plan'}
                                     </Button>
                                 </div>
                             </CardContent>
