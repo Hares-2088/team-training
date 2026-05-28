@@ -85,7 +85,9 @@ export default function TrainingsPage() {
                                 const uniqueMembers = new Set(logs.map((log) => String(log.member)));
                                 completed = memberCount > 0 && uniqueMembers.size >= memberCount;
                                 // Check if the current trainer personally completed this training
-                                trainerCompleted = logs.some((log) => String(log.member) === String(user?._id));
+                                if (user?._id) {
+                                    trainerCompleted = logs.some((log) => String(log.member) === String(user._id));
+                                }
                             }
 
                             setTrainings((prev) =>
