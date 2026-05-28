@@ -233,7 +233,7 @@ export function CreateTrainingForm({
                             className="mt-2"
                         />
                         <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
-                            1 = only selected dates, 2+ = repeat the same date pattern in upcoming months.
+                            Use 1 for only selected dates, or 2-12 to repeat the same date pattern across upcoming months.
                         </p>
                     </div>
 

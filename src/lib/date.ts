@@ -28,7 +28,7 @@ export const toDateKey = (value: Date | string): string => {
 
     const parsed = new Date(value);
     if (Number.isNaN(parsed.getTime())) {
-        throw new Error('Invalid date');
+        throw new Error(`Invalid date: ${value}`);
     }
 
     return dateKeyFromDate(parsed);

@@ -44,7 +44,8 @@ export default function CreateTrainingPageContent() {
                 throw new Error('At least one date is required');
             }
 
-            const repeatForMonths = Math.max(1, Number(data.repeatForMonths) || 1);
+            const repeatForMonthsRaw = Number(data.repeatForMonths) || 1;
+            const repeatForMonths = repeatForMonthsRaw < 1 ? 1 : repeatForMonthsRaw;
             const expandedDateSet = new Set<string>();
 
             for (const date of data.scheduledDates) {
