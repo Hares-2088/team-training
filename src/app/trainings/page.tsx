@@ -15,7 +15,7 @@ type Plan = {
     title: string;
     description?: string;
     isPersonal?: boolean;
-    trainingCount: number;
+    workoutCount: number;
     createdBy?: string;
 };
 
@@ -49,7 +49,11 @@ export default function TrainingsPage() {
                     throw new Error(payload.error || 'Failed to load plans');
                 }
                 const data = await res.json();
-                setPlans(data.plans || []);
+                const normalizedPlans = (data.plans || []).map((plan: any) => ({
+                    ...plan,
+                    workoutCount: Number(plan.trainingCount ?? plan.workoutCount ?? 0),
+                }));
+                setPlans(normalizedPlans);
             } catch (err) {
                 setError(err instanceof Error ? err.message : 'Failed to load plans');
             } finally {
@@ -104,7 +108,7 @@ export default function TrainingsPage() {
                 <div className="flex justify-between items-center mb-8">
                     <div>
                         <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Workout Plans</h2>
-                        <p className="text-slate-600 dark:text-slate-400 mt-1">Plans composed of multiple training sessions</p>
+                        <p className="text-slate-600 dark:text-slate-400 mt-1">Plans composed of multiple workouts</p>
                     </div>
                     <div className="flex flex-col sm:flex-row gap-2">
                         {(effectiveRole === 'trainer' || effectiveRole === 'coach') && (
@@ -158,7 +162,7 @@ export default function TrainingsPage() {
                                     id={plan._id}
                                     title={plan.title}
                                     description={plan.description}
-                                    trainingCount={plan.trainingCount}
+                                    workoutCount={plan.workoutCount}
                                     isPersonal={plan.isPersonal}
                                     canManage={effectiveRole === 'trainer' || effectiveRole === 'coach'}
                                     onEdit={() => handleEdit(plan._id)}
@@ -197,7 +201,7 @@ export default function TrainingsPage() {
                     <DialogHeader>
                         <DialogTitle>Delete Plan</DialogTitle>
                         <DialogDescription>
-                            Are you sure you want to delete &quot;<span className="font-semibold">{deleteDialog.title}</span>&quot;? All training sessions in this plan will also be deleted. This action cannot be undone.
+                            Are you sure you want to delete &quot;<span className="font-semibold">{deleteDialog.title}</span>&quot;? All workouts in this plan will also be deleted. This action cannot be undone.
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter className="gap-2">

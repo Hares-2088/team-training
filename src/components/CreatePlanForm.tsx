@@ -20,14 +20,14 @@ interface Exercise {
     notes: string;
 }
 
-interface TrainingSession {
+interface PlanWorkout {
     title: string;
     scheduledDate: string;
     exercises: Exercise[];
 }
 
 const defaultExercise = (): Exercise => ({ name: '', sets: 3, reps: '10', restTime: 90, notes: '' });
-const defaultSession = (): TrainingSession => ({
+const defaultWorkout = (): PlanWorkout => ({
     title: '',
     scheduledDate: '',
     exercises: [defaultExercise()],
@@ -47,7 +47,7 @@ interface CreatePlanFormProps {
         description: string;
         teamId: string;
         isPersonal: boolean;
-        sessions: TrainingSession[];
+        workouts: PlanWorkout[];
     }) => void;
     isLoading?: boolean;
     isPersonal?: boolean;
@@ -63,7 +63,7 @@ export function CreatePlanForm({
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [teamId, setTeamId] = useState(defaultTeamId);
-    const [sessions, setSessions] = useState<TrainingSession[]>([defaultSession()]);
+    const [workouts, setWorkouts] = useState<PlanWorkout[]>([defaultWorkout()]);
     const [teams, setTeams] = useState<TeamOption[]>([]);
     const [exerciseOptions, setExerciseOptions] = useState<ComboboxOption[]>([]);
     const [validationError, setValidationError] = useState<string | null>(null);
@@ -113,13 +113,13 @@ export function CreatePlanForm({
         fetchExercises();
     }, [teamId]);
 
-    // --- Session helpers ---
-    const addSession = () => setSessions((prev) => [...prev, defaultSession()]);
+    // --- Workout helpers ---
+    const addWorkout = () => setWorkouts((prev) => [...prev, defaultWorkout()]);
 
-    const removeSession = (si: number) => setSessions((prev) => prev.filter((_, i) => i !== si));
+    const removeWorkout = (si: number) => setWorkouts((prev) => prev.filter((_, i) => i !== si));
 
-    const updateSessionField = (si: number, field: keyof TrainingSession, value: any) => {
-        setSessions((prev) => {
+    const updateWorkoutField = (si: number, field: keyof PlanWorkout, value: any) => {
+        setWorkouts((prev) => {
             const next = [...prev];
             next[si] = { ...next[si], [field]: value };
             return next;
@@ -128,7 +128,7 @@ export function CreatePlanForm({
 
     // --- Exercise helpers ---
     const addExercise = (si: number) => {
-        setSessions((prev) => {
+        setWorkouts((prev) => {
             const next = [...prev];
             next[si] = { ...next[si], exercises: [...next[si].exercises, defaultExercise()] };
             return next;
@@ -136,7 +136,7 @@ export function CreatePlanForm({
     };
 
     const removeExercise = (si: number, ei: number) => {
-        setSessions((prev) => {
+        setWorkouts((prev) => {
             const next = [...prev];
             next[si] = {
                 ...next[si],
@@ -147,7 +147,7 @@ export function CreatePlanForm({
     };
 
     const updateExercise = (si: number, ei: number, field: keyof Exercise, value: any) => {
-        setSessions((prev) => {
+        setWorkouts((prev) => {
             const next = [...prev];
             const exs = [...next[si].exercises];
             exs[ei] = { ...exs[ei], [field]: value };
@@ -176,24 +176,24 @@ export function CreatePlanForm({
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         setValidationError(null);
-        for (const session of sessions) {
-            if (!session.title) {
-                setValidationError('Each training session must have a title');
+        for (const workout of workouts) {
+            if (!workout.title) {
+                setValidationError('Each workout must have a title');
                 return;
             }
-            if (!session.scheduledDate) {
-                setValidationError('Each training session must have a scheduled date');
+            if (!workout.scheduledDate) {
+                setValidationError('Each workout must have a scheduled date');
                 return;
             }
         }
-        onSubmit({ title, description, teamId, isPersonal, sessions });
+        onSubmit({ title, description, teamId, isPersonal, workouts });
     };
 
     return (
         <Card className="w-full max-w-2xl">
             <CardHeader>
                 <CardTitle>Create Workout Plan</CardTitle>
-                <CardDescription>Build a plan composed of multiple training sessions</CardDescription>
+                <CardDescription>Build a plan composed of multiple workouts</CardDescription>
             </CardHeader>
             <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-6">
@@ -240,27 +240,27 @@ export function CreatePlanForm({
                         />
                     </div>
 
-                    {/* Training Sessions */}
+                    {/* Workouts */}
                     <div className="border-t pt-6 space-y-6">
                         <div className="flex justify-between items-center">
-                            <h3 className="font-semibold text-lg">Training Sessions</h3>
-                            <Button type="button" variant="outline" size="sm" onClick={addSession}>
-                                + Add Session
+                            <h3 className="font-semibold text-lg">Workouts</h3>
+                            <Button type="button" variant="outline" size="sm" onClick={addWorkout}>
+                                + Add Workout
                             </Button>
                         </div>
 
-                        {sessions.map((session, si) => (
+                        {workouts.map((session, si) => (
                             <div key={`session-${si}`} className="border rounded-lg p-4 space-y-4 bg-slate-50 dark:bg-slate-900">
                                 <div className="flex justify-between items-center">
                                     <h4 className="font-medium text-slate-800 dark:text-slate-200">
-                                        Session {si + 1}
+                                        Workout {si + 1}
                                     </h4>
-                                    {sessions.length > 1 && (
+                                    {workouts.length > 1 && (
                                         <Button
                                             type="button"
                                             variant="ghost"
                                             size="sm"
-                                            onClick={() => removeSession(si)}
+                                            onClick={() => removeWorkout(si)}
                                             className="text-red-600 hover:text-red-700 dark:text-red-400"
                                         >
                                             Remove
@@ -270,11 +270,11 @@ export function CreatePlanForm({
 
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div>
-                                        <Label className="text-xs">Session Title</Label>
+                                        <Label className="text-xs">Workout Title</Label>
                                         <Input
                                             placeholder="e.g., Run + Core"
                                             value={session.title}
-                                            onChange={(e) => updateSessionField(si, 'title', e.target.value)}
+                                            onChange={(e) => updateWorkoutField(si, 'title', e.target.value)}
                                             required
                                             className="mt-1"
                                         />
@@ -285,7 +285,7 @@ export function CreatePlanForm({
                                             <DatePicker
                                                 id={`date-${si}`}
                                                 value={session.scheduledDate}
-                                                onChange={(date) => updateSessionField(si, 'scheduledDate', date)}
+                                                onChange={(date) => updateWorkoutField(si, 'scheduledDate', date)}
                                             />
                                         </div>
                                     </div>

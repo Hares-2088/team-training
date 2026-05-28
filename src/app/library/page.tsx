@@ -20,6 +20,12 @@ type Template = {
     exercises: { name: string; sets: number; reps: string; restTime: number; notes?: string }[];
 };
 
+type Plan = {
+    _id: string;
+    title: string;
+    isPersonal?: boolean;
+};
+
 export default function WorkoutLibraryPage() {
     const { user, activeTeam } = useAuth();
     const router = useRouter();
@@ -29,9 +35,9 @@ export default function WorkoutLibraryPage() {
     const [error, setError] = useState<string | null>(null);
     const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
     const [allTags, setAllTags] = useState<string[]>([]);
-    const [teams, setTeams] = useState<any[]>([]);
-    const [selectedTeamId, setSelectedTeamId] = useState<string>('');
-    const [showTeamSelector, setShowTeamSelector] = useState(false);
+    const [plans, setPlans] = useState<Plan[]>([]);
+    const [selectedPlanId, setSelectedPlanId] = useState<string>('');
+    const [showPlanSelector, setShowPlanSelector] = useState(false);
     const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
     const [addingToPlan, setAddingToPlan] = useState(false);
 
@@ -60,28 +66,28 @@ export default function WorkoutLibraryPage() {
         fetchTemplates();
     }, []);
 
-    // Fetch teams if trainer
+    // Fetch available plans for adding workouts
     useEffect(() => {
         const role = activeTeam.role || user?.role;
-        if (role === 'trainer') {
-            const fetchTeams = async () => {
+        if (role === 'trainer' || role === 'coach') {
+            const fetchPlans = async () => {
                 try {
-                    const res = await fetch('/api/teams');
+                    const res = await fetch('/api/plans', { credentials: 'include' });
                     if (res.ok) {
                         const data = await res.json();
-                        const list = Array.isArray(data) ? data : data.teams || [];
-                        setTeams(list);
+                        const list = Array.isArray(data?.plans) ? data.plans : [];
+                        setPlans(list);
                         if (list.length > 0) {
-                            setSelectedTeamId(activeTeam.teamId || list[0]._id);
+                            setSelectedPlanId(list[0]._id);
                         }
                     }
                 } catch (err) {
-                    console.error('Failed to fetch teams:', err);
+                    console.error('Failed to fetch plans:', err);
                 }
             };
-            fetchTeams();
+            fetchPlans();
         }
-    }, [user, activeTeam.role]);
+    }, [user, activeTeam.role, activeTeam.teamId]);
 
     // Filter templates when selected tags change
     useEffect(() => {
@@ -108,10 +114,11 @@ export default function WorkoutLibraryPage() {
     const role = activeTeam.role || user?.role;
     const isTrainer = role === 'trainer';
     const isCoach = role === 'coach';
+    const canAddToPlan = isTrainer || isCoach;
 
     const addToPlan = async (templateId: string) => {
-        if (isTrainer && !selectedTeamId) {
-            alert('Please select a team');
+        if (!selectedPlanId) {
+            alert('Please select a plan');
             return;
         }
 
@@ -121,7 +128,7 @@ export default function WorkoutLibraryPage() {
                 method: 'POST',
                 credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ teamId: selectedTeamId || undefined }),
+                body: JSON.stringify({ planId: selectedPlanId }),
             });
 
             if (!res.ok) {
@@ -130,9 +137,9 @@ export default function WorkoutLibraryPage() {
             }
 
             const data = await res.json();
-            setShowTeamSelector(false);
-            alert('Template added to team plan!');
-            router.push(`/trainings/${data.trainingId}`);
+            setShowPlanSelector(false);
+            alert('Workout added to plan!');
+            router.push(`/plans/${data.planId}`);
         } catch (e) {
             alert(e instanceof Error ? e.message : 'Failed to add to plan');
         } finally {
@@ -219,23 +226,21 @@ export default function WorkoutLibraryPage() {
                                         <Link href={`/library/${t._id}`} className="flex-1">
                                             <Button className="w-full sm:w-auto">View Details</Button>
                                         </Link>
-                                        {isTrainer ? (
+                                        {canAddToPlan ? (
                                             <Button
                                                 variant="outline"
                                                 className="w-full sm:w-auto flex-1 sm:flex-none"
                                                 disabled={addingToPlan}
                                                 onClick={() => {
                                                     setSelectedTemplateId(t._id);
-                                                    if (teams.length === 1) {
-                                                        // Only one team, add directly
+                                                    if (plans.length === 1) {
                                                         addToPlan(t._id);
                                                     } else {
-                                                        // Show team selector
-                                                        setShowTeamSelector(true);
+                                                        setShowPlanSelector(true);
                                                     }
                                                 }}
                                             >
-                                                {addingToPlan ? 'Adding...' : 'Add to Plan'}
+                                                {addingToPlan ? 'Adding...' : 'Add Workout to Plan'}
                                             </Button>
                                         ) : (
                                             <Button
@@ -254,30 +259,30 @@ export default function WorkoutLibraryPage() {
                 )}
             </main>
 
-            {/* Team Selector Modal for Trainers */}
-            {showTeamSelector && isTrainer && (
+            {/* Plan Selector Modal */}
+            {showPlanSelector && canAddToPlan && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                     <Card className="w-full max-w-md">
                         <CardHeader>
-                            <CardTitle>Select Team</CardTitle>
+                            <CardTitle>Select Plan</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            {teams.length === 0 ? (
-                                <p className="text-center text-slate-600 dark:text-slate-400">No teams available</p>
+                            {plans.length === 0 ? (
+                                <p className="text-center text-slate-600 dark:text-slate-400">No plans available</p>
                             ) : (
                                 <div className="space-y-2">
-                                    {teams.map((team) => (
+                                    {plans.map((plan) => (
                                         <button
-                                            key={team._id}
-                                            onClick={() => setSelectedTeamId(team._id)}
-                                            className={`w-full p-3 rounded-lg border-2 text-left transition-colors ${selectedTeamId === team._id
+                                            key={plan._id}
+                                            onClick={() => setSelectedPlanId(plan._id)}
+                                            className={`w-full p-3 rounded-lg border-2 text-left transition-colors ${selectedPlanId === plan._id
                                                 ? 'border-blue-600 bg-blue-50 dark:bg-blue-950'
                                                 : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
                                                 }`}
                                         >
-                                            <p className="font-medium">{team.name}</p>
+                                            <p className="font-medium">{plan.title}</p>
                                             <p className="text-sm text-slate-600 dark:text-slate-400">
-                                                {team.members?.length || 0} members
+                                                {plan.isPersonal ? 'Personal plan' : 'Team plan'}
                                             </p>
                                         </button>
                                     ))}
@@ -287,16 +292,16 @@ export default function WorkoutLibraryPage() {
                                 <Button
                                     variant="outline"
                                     className="flex-1"
-                                    onClick={() => setShowTeamSelector(false)}
+                                    onClick={() => setShowPlanSelector(false)}
                                 >
                                     Cancel
                                 </Button>
                                 <Button
                                     className="flex-1"
-                                    disabled={!selectedTeamId || addingToPlan}
+                                    disabled={!selectedPlanId || addingToPlan}
                                     onClick={() => addToPlan(selectedTemplateId)}
                                 >
-                                    {addingToPlan ? 'Adding...' : 'Add to Team'}
+                                    {addingToPlan ? 'Adding...' : 'Add to Plan'}
                                 </Button>
                             </div>
                         </CardContent>

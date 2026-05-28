@@ -39,11 +39,11 @@ export async function GET(request: NextRequest) {
         // Attach training count to each plan
         const plansWithCount = await Promise.all(
             plans.map(async (plan) => {
-                const trainingCount = await Training.countDocuments({ plan: plan._id });
+                const workoutCount = await Training.countDocuments({ plan: plan._id });
                 return {
                     ...plan,
                     _id: plan._id.toString(),
-                    trainingCount,
+                    workoutCount,
                 };
             })
         );
