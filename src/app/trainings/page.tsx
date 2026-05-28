@@ -177,12 +177,12 @@ export default function TrainingsPage() {
                     <div className="flex flex-col sm:flex-row gap-2">
                         {(effectiveRole === 'trainer' || effectiveRole === 'coach') && (
                             <Link href="/trainings/create" className="sm:flex-none">
-                                <Button size="lg" className="w-full sm:w-auto">Create Training</Button>
+                                <Button size="lg" className="w-full sm:w-auto">Create Team Plan</Button>
                             </Link>
                         )}
                         {(effectiveRole === 'trainer' || effectiveRole === 'coach' || effectiveRole === 'member') && (
                             <Link href="/trainings/create?personal=true" className="sm:flex-none">
-                                <Button variant="outline" size="lg" className="w-full sm:w-auto">Create Personal Training</Button>
+                                <Button variant="outline" size="lg" className="w-full sm:w-auto">Create Personal Plan</Button>
                             </Link>
                         )}
                         <Link href="/library" className="sm:flex-none">
@@ -262,10 +262,10 @@ export default function TrainingsPage() {
                         <Card className="border-0 shadow-lg">
                             <CardContent className="py-12 text-center">
                                 <p className="text-gray-500 text-lg">No trainings yet</p>
-                                <p className="text-gray-400 mt-2">Create your first training to get started</p>
+                                <p className="text-gray-400 mt-2">Create your first plan to get started</p>
                                 {(effectiveRole === 'trainer' || effectiveRole === 'coach') && (
                                     <Link href="/trainings/create" className="mt-4 inline-block">
-                                        <Button>Create Your First Training</Button>
+                                        <Button>Create Your First Plan</Button>
                                     </Link>
                                 )}
                             </CardContent>

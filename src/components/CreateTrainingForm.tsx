@@ -35,6 +35,7 @@ interface CreateTrainingFormProps {
         title: string;
         description: string;
         scheduledDates: string[];
+        repeatForMonths: number;
         exercises: Exercise[];
         teamId: string;
     }) => void;
@@ -53,6 +54,7 @@ export function CreateTrainingForm({
     const [title, setTitle] = useState(initialTitle);
     const [description, setDescription] = useState(initialDescription);
     const [scheduledDates, setScheduledDates] = useState<string[]>([]);
+    const [repeatForMonths, setRepeatForMonths] = useState(1);
     const [teamId, setTeamId] = useState(defaultTeamId);
     const [exercises, setExercises] = useState<Exercise[]>(
         initialExercises && initialExercises.length > 0
@@ -169,22 +171,22 @@ export function CreateTrainingForm({
             alert('Please select at least one date');
             return;
         }
-        onSubmit({ title, description, scheduledDates, exercises, teamId });
+        onSubmit({ title, description, scheduledDates, repeatForMonths, exercises, teamId });
     };
 
     return (
         <Card className="w-full max-w-2xl">
             <CardHeader>
-                <CardTitle>Create New Training</CardTitle>
-                <CardDescription>Plan your team's next workout session</CardDescription>
+                <CardTitle>Create Workout Plan</CardTitle>
+                <CardDescription>Build a plan with multiple training dates</CardDescription>
             </CardHeader>
             <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-6">
                     <div>
-                        <Label htmlFor="title">Training Title</Label>
+                        <Label htmlFor="title">Workout Plan Name</Label>
                         <Input
                             id="title"
-                            placeholder="e.g., Upper Body Strength"
+                            placeholder="e.g., Strength Block A"
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
                             required
@@ -218,6 +220,21 @@ export function CreateTrainingForm({
                             className="mt-2"
                             rows={6}
                         />
+                    </div>
+
+                    <div>
+                        <Label htmlFor="repeatMonths">Duplicate Across Months</Label>
+                        <NumberInput
+                            id="repeatMonths"
+                            value={repeatForMonths}
+                            onChange={setRepeatForMonths}
+                            min={1}
+                            max={12}
+                            className="mt-2"
+                        />
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                            Use 1 for only selected dates, or 2-12 to repeat the same date pattern across upcoming months.
+                        </p>
                     </div>
 
                     <div>
@@ -357,7 +374,7 @@ export function CreateTrainingForm({
                     </div>
 
                     <Button type="submit" className="w-full" disabled={isLoading} size="lg">
-                        {isLoading ? 'Creating...' : 'Create Training'}
+                        {isLoading ? 'Creating...' : 'Create Plan'}
                     </Button>
                 </form>
             </CardContent>

@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { ChevronLeft, Edit, Trash2, Calendar, Dumbbell } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { formatDateLabel } from '@/lib/date';
 
 type Training = {
     _id: string;
@@ -76,14 +77,11 @@ export default function TrainingDetailPage() {
     };
 
     const formatDate = (dateString: string) => {
-        const date = new Date(dateString);
-        return date.toLocaleDateString('en-US', {
+        return formatDateLabel(dateString, {
             weekday: 'long',
             year: 'numeric',
             month: 'long',
             day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
         });
     };
 
@@ -187,7 +185,7 @@ export default function TrainingDetailPage() {
                             <div>
                                 <div className="flex items-center gap-3 mb-2">
                                     <Calendar className="w-5 h-5 text-primary-600 dark:text-primary-400" />
-                                    <p className="text-label">Scheduled Date & Time</p>
+                                    <p className="text-label">Scheduled Date</p>
                                 </div>
                                 <p className="text-slate-700 dark:text-slate-300 ml-8">{formatDate(training.scheduledDate)}</p>
                             </div>

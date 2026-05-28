@@ -3,6 +3,7 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
+import { formatDateLabel } from '@/lib/date';
 
 interface TrainingCardProps {
     id: string;
@@ -54,7 +55,7 @@ export function TrainingCard({
             <CardContent>
                 <div className="space-y-3">
                     <div className="flex justify-between text-sm text-gray-600">
-                        <span>📅 {new Date(date).toLocaleDateString()}</span>
+                        <span>📅 {formatDateLabel(date)}</span>
                         <span>💪 {exerciseCount} exercises</span>
                     </div>
                     <div className="flex flex-col sm:flex-row gap-2">

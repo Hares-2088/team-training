@@ -4,6 +4,7 @@ import Training from '@/models/Training';
 import Team from '@/models/Team';
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken } from '@/lib/auth';
+import { toDateKey } from '@/lib/date';
 
 export async function GET(request: NextRequest) {
     try {
@@ -67,7 +68,7 @@ export async function GET(request: NextRequest) {
                 }
 
                 const date = log.createdAt
-                    ? new Date(log.createdAt).toISOString().split('T')[0]
+                    ? toDateKey(new Date(log.createdAt))
                     : 'Unknown';
 
                 // Find team name
@@ -107,7 +108,7 @@ export async function GET(request: NextRequest) {
 
             logs.forEach((log) => {
                 const date = log.createdAt
-                    ? new Date(log.createdAt).toISOString().split('T')[0]
+                    ? toDateKey(new Date(log.createdAt))
                     : 'Unknown';
 
                 if (!activityByDate[date]) {

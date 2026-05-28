@@ -4,6 +4,7 @@ import Team from '@/models/Team';
 import User from '@/models/User';
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken } from '@/lib/auth';
+import { toDateAtLocalMidnight } from '@/lib/date';
 
 export async function GET(
     request: NextRequest,
@@ -106,7 +107,15 @@ export async function PATCH(
 
         for (const field of allowedFields) {
             if (field in body) {
-                updates[field] = field === 'scheduledDate' ? new Date(body[field]) : body[field];
+                if (field === 'scheduledDate') {
+                    const scheduledDate = toDateAtLocalMidnight(body[field]);
+                    if (Number.isNaN(scheduledDate.getTime())) {
+                        return NextResponse.json({ error: 'Invalid scheduledDate' }, { status: 400 });
+                    }
+                    updates[field] = scheduledDate;
+                } else {
+                    updates[field] = body[field];
+                }
             }
         }
 

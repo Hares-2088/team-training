@@ -4,6 +4,7 @@ import Team from '@/models/Team';
 import User from '@/models/User';
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken } from '@/lib/auth';
+import { toDateAtLocalMidnight } from '@/lib/date';
 
 const REQUIRED_FIELDS = ['title', 'team', 'scheduledDate'] as const;
 
@@ -129,12 +130,17 @@ export async function POST(request: NextRequest) {
             }
         }
 
+        const scheduledDate = toDateAtLocalMidnight(body.scheduledDate);
+        if (Number.isNaN(scheduledDate.getTime())) {
+            return NextResponse.json({ error: 'Invalid scheduledDate' }, { status: 400 });
+        }
+
         const training = await Training.create({
             title: body.title,
             description: body.description,
             exercises: body.exercises || [],
             team: body.team,
-            scheduledDate: new Date(body.scheduledDate),
+            scheduledDate,
             status: body.status || 'scheduled',
             isPersonal: isPersonal,
             createdBy: isPersonal ? decoded.userId : undefined,
