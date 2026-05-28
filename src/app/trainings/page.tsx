@@ -19,6 +19,16 @@ type Plan = {
     createdBy?: string;
 };
 
+type PlanApiResponse = {
+    _id: string;
+    title: string;
+    description?: string;
+    isPersonal?: boolean;
+    createdBy?: string;
+    trainingCount?: number;
+    workoutCount?: number;
+};
+
 type DeleteDialogState = {
     isOpen: boolean;
     planId: string;
@@ -49,7 +59,7 @@ export default function TrainingsPage() {
                     throw new Error(payload.error || 'Failed to load plans');
                 }
                 const data = await res.json();
-                const normalizedPlans = (data.plans || []).map((plan: any) => ({
+                const normalizedPlans: Plan[] = (data.plans || []).map((plan: PlanApiResponse) => ({
                     ...plan,
                     workoutCount: Number(plan.trainingCount ?? plan.workoutCount ?? 0),
                 }));

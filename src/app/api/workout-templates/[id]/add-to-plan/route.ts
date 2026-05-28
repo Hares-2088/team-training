@@ -44,7 +44,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         const isTrainer = String(team.trainer) === decoded.userId;
         const memberRole = getMemberRole(team, decoded.userId);
         const isCoach = memberRole === 'coach';
-        const isMember = team.members.some((m: any) => String(m?._id ?? m) === decoded.userId);
+        const isMember = team.members.some((member: unknown) =>
+            String((member as { _id?: unknown })?._id ?? member) === decoded.userId
+        );
         const isOwner = plan.createdBy && String(plan.createdBy) === decoded.userId;
 
         if (plan.isPersonal) {
