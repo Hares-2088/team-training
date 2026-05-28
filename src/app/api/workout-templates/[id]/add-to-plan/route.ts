@@ -47,9 +47,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         const isTrainer = String(team.trainer) === decoded.userId;
         const memberRole = getMemberRole(team, decoded.userId);
         const isCoach = memberRole === 'coach';
-        const isMember = team.members.some((member: unknown) =>
-            String((member as { _id?: unknown })?._id ?? member) === decoded.userId
-        );
         const isOwner = plan.createdBy && String(plan.createdBy) === decoded.userId;
 
         if (plan.isPersonal) {
@@ -63,10 +60,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
                     { status: 403 }
                 );
             }
-        }
-
-        if (!isTrainer && !isCoach && !isMember) {
-            return NextResponse.json({ error: 'Unauthorized for this plan team' }, { status: 403 });
         }
 
         // Add workout to plan from the template
