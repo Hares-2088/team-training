@@ -33,11 +33,7 @@ export async function GET(request: NextRequest) {
         const isCoach = memberRole === 'coach';
 
         const query: any = { team: activeTeamId };
-        if (isTrainer || isCoach) {
-            query.$or = [{ isPersonal: { $ne: true } }, { createdBy: decoded.userId }];
-        } else {
-            query.$or = [{ isPersonal: { $ne: true } }, { createdBy: decoded.userId }];
-        }
+        query.$or = [{ isPersonal: { $ne: true } }, { createdBy: decoded.userId }];
 
         const plans = await WorkoutPlan.find(query).sort({ createdAt: -1 }).lean();
 

@@ -59,6 +59,7 @@ export function CreatePlanForm({
     const [sessions, setSessions] = useState<TrainingSession[]>([defaultSession()]);
     const [teams, setTeams] = useState<Array<{ _id: string; name: string; trainer?: { _id: string }; members?: Array<{ _id: string }> }>>([]);
     const [exerciseOptions, setExerciseOptions] = useState<ComboboxOption[]>([]);
+    const [validationError, setValidationError] = useState<string | null>(null);
 
     useEffect(() => {
         const fetchTeams = async () => {
@@ -167,9 +168,16 @@ export function CreatePlanForm({
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        setValidationError(null);
         for (const session of sessions) {
-            if (!session.title) { alert('Each training session must have a title'); return; }
-            if (!session.scheduledDate) { alert('Each training session must have a scheduled date'); return; }
+            if (!session.title) {
+                setValidationError('Each training session must have a title');
+                return;
+            }
+            if (!session.scheduledDate) {
+                setValidationError('Each training session must have a scheduled date');
+                return;
+            }
         }
         onSubmit({ title, description, teamId, isPersonal, sessions });
     };
@@ -363,6 +371,12 @@ export function CreatePlanForm({
                             </div>
                         ))}
                     </div>
+
+                    {validationError && (
+                        <div className="rounded-md border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 px-4 py-3 text-sm text-red-700 dark:text-red-400">
+                            {validationError}
+                        </div>
+                    )}
 
                     <Button type="submit" className="w-full" disabled={isLoading} size="lg">
                         {isLoading ? 'Creating...' : 'Create Plan'}
