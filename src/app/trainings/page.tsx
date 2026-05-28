@@ -19,6 +19,12 @@ type Plan = {
     createdBy?: string;
 };
 
+type DeleteDialogState = {
+    isOpen: boolean;
+    planId: string;
+    title: string;
+};
+
 export default function TrainingsPage() {
     const { user, activeTeam } = useAuth();
     const router = useRouter();
@@ -27,7 +33,7 @@ export default function TrainingsPage() {
     const [error, setError] = useState<string | null>(null);
     const effectiveRole = activeTeam.role || user?.role || null;
     const [filter, setFilter] = useState<'all' | 'team' | 'personal'>('all');
-    const [deleteDialog, setDeleteDialog] = useState<{ isOpen: boolean; planId: string; title: string }>({
+    const [deleteDialog, setDeleteDialog] = useState<DeleteDialogState>({
         isOpen: false,
         planId: '',
         title: '',

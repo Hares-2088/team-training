@@ -33,6 +33,13 @@ const defaultSession = (): TrainingSession => ({
     exercises: [defaultExercise()],
 });
 
+interface TeamOption {
+    _id: string;
+    name: string;
+    trainer?: { _id: string };
+    members?: Array<{ _id: string }>;
+}
+
 interface CreatePlanFormProps {
     defaultTeamId?: string;
     onSubmit: (data: {
@@ -57,7 +64,7 @@ export function CreatePlanForm({
     const [description, setDescription] = useState('');
     const [teamId, setTeamId] = useState(defaultTeamId);
     const [sessions, setSessions] = useState<TrainingSession[]>([defaultSession()]);
-    const [teams, setTeams] = useState<Array<{ _id: string; name: string; trainer?: { _id: string }; members?: Array<{ _id: string }> }>>([]);
+    const [teams, setTeams] = useState<TeamOption[]>([]);
     const [exerciseOptions, setExerciseOptions] = useState<ComboboxOption[]>([]);
     const [validationError, setValidationError] = useState<string | null>(null);
 
@@ -66,7 +73,7 @@ export function CreatePlanForm({
             try {
                 const res = await fetch('/api/teams');
                 const data = await res.json();
-                const allTeams: any[] = Array.isArray(data) ? data : data.teams || [];
+                const allTeams: TeamOption[] = Array.isArray(data) ? data : data.teams || [];
                 const filtered = allTeams.filter((t) => {
                     if (!user) return false;
                     const isTrainerOfTeam = (t.trainer?._id || String(t.trainer)) === user._id;

@@ -4,6 +4,7 @@ import WorkoutPlan from '@/models/WorkoutPlan';
 import Training from '@/models/Training';
 import Team from '@/models/Team';
 import { verifyToken } from '@/lib/auth';
+import { getMemberRole } from '@/lib/utils/helpers';
 
 export async function GET(
     request: NextRequest,
@@ -61,9 +62,7 @@ export async function PUT(
         if (!team) return NextResponse.json({ error: 'Team not found' }, { status: 404 });
 
         const isTrainer = team.trainer.toString() === decoded.userId;
-        const memberRole = (team.memberRoles || []).find(
-            (m: any) => String(m.user) === decoded.userId
-        )?.role;
+        const memberRole = getMemberRole(team, decoded.userId);
         const isCoach = memberRole === 'coach';
         const isOwner = plan.createdBy && String(plan.createdBy) === decoded.userId;
 
@@ -103,9 +102,7 @@ export async function DELETE(
         if (!team) return NextResponse.json({ error: 'Team not found' }, { status: 404 });
 
         const isTrainer = team.trainer.toString() === decoded.userId;
-        const memberRole = (team.memberRoles || []).find(
-            (m: any) => String(m.user) === decoded.userId
-        )?.role;
+        const memberRole = getMemberRole(team, decoded.userId);
         const isCoach = memberRole === 'coach';
         const isOwner = plan.createdBy && String(plan.createdBy) === decoded.userId;
 

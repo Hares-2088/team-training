@@ -4,6 +4,7 @@ import WorkoutPlan from '@/models/WorkoutPlan';
 import Training from '@/models/Training';
 import Team from '@/models/Team';
 import { verifyToken } from '@/lib/auth';
+import { getMemberRole } from '@/lib/utils/helpers';
 
 export async function GET(request: NextRequest) {
     try {
@@ -27,9 +28,7 @@ export async function GET(request: NextRequest) {
         if (!team) return NextResponse.json({ error: 'Unauthorized for active team' }, { status: 403 });
 
         const isTrainer = String(team.trainer) === decoded.userId;
-        const memberRole = (team.memberRoles || []).find(
-            (m: any) => String(m.user) === decoded.userId
-        )?.role;
+        const memberRole = getMemberRole(team, decoded.userId);
         const isCoach = memberRole === 'coach';
 
         const query: any = { team: activeTeamId };
@@ -74,9 +73,7 @@ export async function POST(request: NextRequest) {
         if (!team) return NextResponse.json({ error: 'Team not found' }, { status: 404 });
 
         const isTrainer = team.trainer.toString() === decoded.userId;
-        const memberRole = (team.memberRoles || []).find(
-            (m: any) => String(m.user) === decoded.userId
-        )?.role;
+        const memberRole = getMemberRole(team, decoded.userId);
         const isCoach = memberRole === 'coach';
         const isMember = team.members.some(
             (m: any) => String(m?._id ?? m) === decoded.userId

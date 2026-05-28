@@ -25,3 +25,7 @@ export function getProgressPercentage(completed: number, total: number): number 
     if (total === 0) return 0;
     return Math.round((completed / total) * 100);
 }
+
+export function getMemberRole(team: { memberRoles?: Array<{ user: any; role: string }> }, userId: string): string | undefined {
+    return team.memberRoles?.find((m) => String(m.user) === userId)?.role;
+}
