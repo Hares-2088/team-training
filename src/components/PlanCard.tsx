@@ -8,7 +8,7 @@ interface PlanCardProps {
     id: string;
     title: string;
     description?: string;
-    trainingCount: number;
+    workoutCount: number;
     isPersonal?: boolean;
     canManage?: boolean;
     onEdit?: () => void;
@@ -19,7 +19,7 @@ export function PlanCard({
     id,
     title,
     description,
-    trainingCount,
+    workoutCount,
     isPersonal,
     canManage = false,
     onEdit,
@@ -47,7 +47,7 @@ export function PlanCard({
             <CardContent>
                 <div className="space-y-3">
                     <div className="text-sm text-gray-600 dark:text-gray-400">
-                        🏋️ {trainingCount} training session{trainingCount !== 1 ? 's' : ''}
+                        🏋️ {workoutCount} workout{workoutCount !== 1 ? 's' : ''}
                     </div>
                     <div className="flex flex-col sm:flex-row gap-2">
                         <Link href={`/plans/${id}`} className="flex-1">

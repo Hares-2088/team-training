@@ -187,7 +187,7 @@ export default function PlanDetailPage() {
                     <CardContent className="pt-4">
                         <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
                             <Dumbbell className="w-4 h-4" />
-                            {trainings.length} training session{trainings.length !== 1 ? 's' : ''}
+                            {trainings.length} workout{trainings.length !== 1 ? 's' : ''}
                         </div>
                         {canManage && (
                             <div className="flex gap-3 mt-4">
@@ -204,16 +204,16 @@ export default function PlanDetailPage() {
                     </CardContent>
                 </Card>
 
-                {/* Training Sessions */}
+                {/* Workouts */}
                 <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
                     <Calendar className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-                    Training Sessions
+                    Workouts
                 </h2>
 
                 {trainings.length === 0 ? (
                     <Card>
                         <CardContent className="py-8 text-center text-slate-500 dark:text-slate-400">
-                            No training sessions in this plan yet.
+                        No workouts in this plan yet.
                         </CardContent>
                     </Card>
                 ) : (
@@ -299,7 +299,7 @@ export default function PlanDetailPage() {
                         <DialogTitle>Delete Plan</DialogTitle>
                         <DialogDescription>
                             Are you sure you want to delete &quot;<span className="font-semibold">{plan.title}</span>&quot;?
-                            This will also delete all {trainings.length} training session{trainings.length !== 1 ? 's' : ''} in this plan. This action cannot be undone.
+                            This will also delete all {trainings.length} workout{trainings.length !== 1 ? 's' : ''} in this plan. This action cannot be undone.
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter className="gap-2">

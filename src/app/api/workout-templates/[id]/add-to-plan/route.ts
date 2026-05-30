@@ -3,7 +3,9 @@ import { connectDB } from '@/lib/db/mongodb';
 import WorkoutTemplate from '@/models/WorkoutTemplate';
 import Training from '@/models/Training';
 import Team from '@/models/Team';
+import WorkoutPlan from '@/models/WorkoutPlan';
 import { verifyToken } from '@/lib/auth';
+import { getMemberRole } from '@/lib/utils/helpers';
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
@@ -17,7 +19,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
         const { id } = await params;
         const body = await request.json();
-        const { teamId } = body;
+        const { planId } = body;
+
+        if (!planId) {
+            return NextResponse.json({ error: 'planId is required' }, { status: 400 });
+        }
 
         // Get the template
         const template = await WorkoutTemplate.findById(id).lean();
@@ -25,29 +31,38 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
             return NextResponse.json({ error: 'Template not found' }, { status: 404 });
         }
 
-        let selectedTeamId = teamId;
+        const plan = await WorkoutPlan.findById(planId);
+        if (!plan) {
+            return NextResponse.json({ error: 'Plan not found' }, { status: 404 });
+        }
+        if (!plan.team) {
+            return NextResponse.json({ error: 'Plan has no team' }, { status: 400 });
+        }
 
-        // If trainer, teamId must be provided and user must be trainer of that team
-        if (decoded.role === 'trainer') {
-            if (!selectedTeamId) {
-                return NextResponse.json({ error: 'Team ID required for trainers' }, { status: 400 });
+        const team = await Team.findById(plan.team);
+        if (!team) {
+            return NextResponse.json({ error: 'Team not found' }, { status: 404 });
+        }
+
+        const isTrainer = String(team.trainer) === decoded.userId;
+        const memberRole = getMemberRole(team, decoded.userId);
+        const isCoach = memberRole === 'coach';
+        const isOwner = plan.createdBy && String(plan.createdBy) === decoded.userId;
+
+        if (plan.isPersonal) {
+            if (!isTrainer && !isCoach && !isOwner) {
+                return NextResponse.json({ error: 'Unauthorized to add workouts to this plan' }, { status: 403 });
             }
-            const team = await Team.findById(selectedTeamId);
-            if (!team || team.trainer.toString() !== decoded.userId) {
-                return NextResponse.json({ error: 'Not trainer of this team' }, { status: 403 });
+        } else {
+            if (!isTrainer && !isCoach) {
+                return NextResponse.json(
+                    { error: 'Only team trainer or coach can add workouts to team plans' },
+                    { status: 403 }
+                );
             }
         }
 
-        // If coach or member, use their team
-        if (decoded.role === 'coach' || decoded.role === 'member') {
-            const userTeams = await Team.find({ members: decoded.userId });
-            if (!userTeams || userTeams.length === 0) {
-                return NextResponse.json({ error: 'No team found for user' }, { status: 400 });
-            }
-            selectedTeamId = userTeams[0]._id;
-        }
-
-        // Create a training from the template
+        // Add workout to plan from the template
         const training = await Training.create({
             title: template.title,
             description: template.description || '',
@@ -58,13 +73,15 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
                 restTime: ex.restTime ?? 90,
                 notes: ex.notes || '',
             })),
-            team: selectedTeamId,
-            trainer: decoded.userId,
+            team: plan.team,
             scheduledDate: new Date(),
             status: 'scheduled',
+            isPersonal: Boolean(plan.isPersonal),
+            createdBy: plan.isPersonal ? plan.createdBy : undefined,
+            plan: plan._id,
         });
 
-        return NextResponse.json({ trainingId: training._id.toString() }, { status: 201 });
+        return NextResponse.json({ trainingId: training._id.toString(), planId: plan._id.toString() }, { status: 201 });
     } catch (error: any) {
         console.error('Error adding template to plan:', error);
         return NextResponse.json({ error: error.message || 'Failed to add template to plan' }, { status: 500 });

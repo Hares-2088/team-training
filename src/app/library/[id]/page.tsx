@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useSearchParams, useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,9 +18,9 @@ export default function TemplateDetailPage() {
     const [template, setTemplate] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [teams, setTeams] = useState<any[]>([]);
-    const [selectedTeamId, setSelectedTeamId] = useState<string>('');
-    const [showTeamSelector, setShowTeamSelector] = useState(false);
+    const [plans, setPlans] = useState<any[]>([]);
+    const [selectedPlanId, setSelectedPlanId] = useState<string>('');
+    const [showPlanSelector, setShowPlanSelector] = useState(false);
     const [addingToPlan, setAddingToPlan] = useState(false);
 
     useEffect(() => {
@@ -39,35 +39,38 @@ export default function TemplateDetailPage() {
         if (id) fetchTemplate();
     }, [id]);
 
-    // Fetch teams if trainer (based on active team role)
+    // Fetch available plans for adding workouts
     useEffect(() => {
         const role = activeTeam.role || user?.role;
-        if (role === 'trainer') {
-            const fetchTeams = async () => {
+        if (role === 'trainer' || role === 'coach') {
+            const fetchPlans = async () => {
                 try {
-                    const res = await fetch('/api/teams');
+                    const res = await fetch('/api/plans', { credentials: 'include' });
                     if (res.ok) {
                         const data = await res.json();
-                        const list = Array.isArray(data) ? data : data.teams || [];
-                        setTeams(list);
+                        const list = Array.isArray(data?.plans) ? data.plans : [];
+                        setPlans(list);
                         if (list.length > 0) {
-                            setSelectedTeamId(activeTeam.teamId || list[0]._id);
+                            setSelectedPlanId(list[0]._id);
                         }
                     }
                 } catch (err) {
-                    console.error('Failed to fetch teams:', err);
+                    console.error('Failed to fetch plans:', err);
                 }
             };
-            fetchTeams();
+            fetchPlans();
         }
     }, [user, activeTeam]);
 
     const role = activeTeam.role || user?.role;
     const isTrainer = role === 'trainer';
+    const isCoach = role === 'coach';
+    const canAddToPlan = isTrainer || isCoach;
 
-    const addToPlan = async () => {
-        if (isTrainer && !selectedTeamId) {
-            alert('Please select a team');
+    const addToPlan = async (planIdOverride?: string) => {
+        const targetPlanId = planIdOverride ?? selectedPlanId;
+        if (!targetPlanId) {
+            alert('Please select a plan');
             return;
         }
 
@@ -77,7 +80,7 @@ export default function TemplateDetailPage() {
                 method: 'POST',
                 credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ teamId: selectedTeamId || undefined }),
+                body: JSON.stringify({ planId: targetPlanId }),
             });
 
             if (!res.ok) {
@@ -86,9 +89,9 @@ export default function TemplateDetailPage() {
             }
 
             const data = await res.json();
-            setShowTeamSelector(false);
-            alert('Template added to team plan!');
-            router.push(`/trainings/${data.trainingId}`);
+            setShowPlanSelector(false);
+            alert('Workout added to plan!');
+            router.push(`/plans/${data.planId}`);
         } catch (e) {
             alert(e instanceof Error ? e.message : 'Failed to add to plan');
         } finally {
@@ -160,20 +163,20 @@ export default function TemplateDetailPage() {
                                 ))}
                             </div>
                             <div className="mt-6 flex flex-col sm:flex-row gap-2">
-                                {isTrainer && (
+                                {canAddToPlan && (
                                     <>
                                         <Button
                                             className="flex-1 sm:flex-none w-full sm:w-auto"
                                             disabled={addingToPlan}
                                             onClick={() => {
-                                                if (teams.length === 1) {
+                                                if (plans.length === 1) {
                                                     addToPlan();
                                                 } else {
-                                                    setShowTeamSelector(true);
+                                                    setShowPlanSelector(true);
                                                 }
                                             }}
                                         >
-                                            {addingToPlan ? 'Adding...' : 'Add to Team Plan'}
+                                            {addingToPlan ? 'Adding...' : 'Add Workout to Plan'}
                                         </Button>
                                         <Link href="/trainings" className="flex-1 sm:flex-none">
                                             <Button variant="outline" className="w-full sm:w-auto">Browse Plans</Button>
@@ -190,28 +193,34 @@ export default function TemplateDetailPage() {
                     </Card>
                 )}
 
-                {/* Team Selector Modal */}
-                {showTeamSelector && isTrainer && (
+                {/* Plan Selector Modal */}
+                {showPlanSelector && canAddToPlan && (
                     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
                         <Card className="w-full max-w-sm">
                             <CardHeader>
-                                <CardTitle>Select a Team</CardTitle>
+                                <CardTitle>Select a Plan</CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-4">
-                                {teams.length === 0 ? (
-                                    <p className="text-slate-600 dark:text-slate-400">No teams available</p>
+                                {plans.length === 0 ? (
+                                    <p className="text-slate-600 dark:text-slate-400">No plans available</p>
                                 ) : (
                                     <div className="space-y-2">
-                                        {teams.map((team: any) => (
+                                        {plans.map((plan: any) => (
                                             <button
-                                                key={team._id}
+                                                key={plan._id}
                                                 onClick={() => {
-                                                    setSelectedTeamId(team._id);
-                                                    addToPlan();
+                                                    setSelectedPlanId(plan._id);
+                                                    addToPlan(plan._id);
                                                 }}
-                                                className="w-full text-left p-3 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900 transition"
+                                                className={`w-full text-left p-3 rounded-lg border-2 transition-colors ${selectedPlanId === plan._id
+                                                    ? 'border-blue-600 bg-blue-50 dark:bg-blue-950'
+                                                    : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900'
+                                                    }`}
                                             >
-                                                {team.name}
+                                                <p className="font-medium">{plan.title}</p>
+                                                <p className="text-sm text-slate-600 dark:text-slate-400">
+                                                    {plan.isPersonal ? 'Personal plan' : 'Team plan'}
+                                                </p>
                                             </button>
                                         ))}
                                     </div>
@@ -220,7 +229,7 @@ export default function TemplateDetailPage() {
                                     <Button
                                         variant="outline"
                                         className="flex-1"
-                                        onClick={() => setShowTeamSelector(false)}
+                                        onClick={() => setShowPlanSelector(false)}
                                     >
                                         Cancel
                                     </Button>
