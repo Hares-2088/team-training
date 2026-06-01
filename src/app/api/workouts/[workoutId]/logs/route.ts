@@ -4,18 +4,18 @@ import type { NextRequest } from 'next/server';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> | { id: string } }
+  { params }: { params: Promise<{ workoutId: string }> | { workoutId: string } }
 ) {
   await connectDB();
   const resolvedParams = await Promise.resolve(params);
-  return createWorkoutLogResponse(request, resolvedParams.id);
+  return createWorkoutLogResponse(request, resolvedParams.workoutId);
 }
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> | { id: string } }
+  { params }: { params: Promise<{ workoutId: string }> | { workoutId: string } }
 ) {
   await connectDB();
   const resolvedParams = await Promise.resolve(params);
-  return getWorkoutLogsResponse(request, resolvedParams.id);
+  return getWorkoutLogsResponse(request, resolvedParams.workoutId);
 }

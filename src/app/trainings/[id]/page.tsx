@@ -1,317 +1,271 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { ArrowLeft, Flame, HeartPulse, Timer, User2 } from 'lucide-react';
+import { Navbar } from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { ThemeToggle } from '@/components/ThemeToggle';
-import { ChevronLeft, Edit, Trash2, Calendar, Dumbbell } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatDateLabel } from '@/lib/date';
 
+type Exercise = {
+  name: string;
+  sets: number;
+  reps: string;
+  restTime?: number;
+  notes?: string;
+};
+
 type Training = {
-    _id: string;
-    title: string;
-    description?: string;
-    scheduledDate: string;
-    exercises: Array<{
-        name: string;
-        sets: number;
-        reps: string;
-        restTime?: number;
-        notes?: string;
-    }>;
-    status: 'scheduled' | 'completed' | 'cancelled';
-    trainer?: { _id: string; name: string; email: string };
-    team?: { _id: string; name: string };
+  _id: string;
+  title: string;
+  description?: string;
+  scheduledDate: string;
+  exercises: Exercise[];
+  status: 'scheduled' | 'completed' | 'cancelled';
+  warmup?: string[];
+  dayFocus?: string;
+  cardioBlock?: {
+    type?: string;
+    durationMinutes?: number;
+    intensity?: string;
+    instructions?: string;
+  };
+  intensityNotes?: string;
+  instructions?: string[];
+  assignedTo?: { _id: string; name: string; email: string } | null;
+  workoutPlan?: { _id: string; title: string } | null;
 };
 
 export default function TrainingDetailPage() {
-    const { user, activeTeam } = useAuth();
-    const params = useParams();
-    const router = useRouter();
-    const id = params.id as string;
+  const params = useParams();
+  const router = useRouter();
+  const { user, activeTeam } = useAuth();
+  const id = params.id as string;
 
-    const [training, setTraining] = useState<Training | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    const [isDeleting, setIsDeleting] = useState(false);
-    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [training, setTraining] = useState<Training | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [hasLog, setHasLog] = useState(false);
 
-    useEffect(() => {
-        const fetchTraining = async () => {
-            try {
-                const res = await fetch(`/api/trainings/${id}`);
-                if (!res.ok) {
-                    const payload = await res.json();
-                    throw new Error(payload.error || 'Failed to load training');
-                }
+  const effectiveRole = activeTeam.role || user?.role || null;
+  const canManage = effectiveRole === 'trainer' || effectiveRole === 'coach';
 
-                const data = await res.json();
-                setTraining(data.training);
-            } catch (err) {
-                const message = err instanceof Error ? err.message : 'Failed to load training';
-                setError(message);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-
-        fetchTraining();
-    }, [id]);
-
-    const getStatusBadge = (status: string) => {
-        switch (status) {
-            case 'completed':
-                return <Badge className="badge-success">Completed</Badge>;
-            case 'scheduled':
-                return <Badge className="badge-warning">Scheduled</Badge>;
-            case 'cancelled':
-                return <Badge className="badge-danger">Cancelled</Badge>;
-            default:
-                return <Badge>{status}</Badge>;
+  useEffect(() => {
+    const fetchTraining = async () => {
+      try {
+        const res = await fetch(`/api/trainings/${id}`, { credentials: 'include' });
+        if (!res.ok) {
+          const payload = (await res.json()) as { error?: string };
+          throw new Error(payload.error || 'Failed to load training');
         }
+        const data = (await res.json()) as Training;
+        setTraining(data);
+      } catch (fetchError) {
+        setError(fetchError instanceof Error ? fetchError.message : 'Failed to load training');
+      } finally {
+        setIsLoading(false);
+      }
     };
 
-    const formatDate = (dateString: string) => {
-        return formatDateLabel(dateString, {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-        });
-    };
+    void fetchTraining();
+  }, [id]);
 
-    const handleConfirmDelete = async () => {
-        setIsDeleting(true);
-        try {
-            const res = await fetch(`/api/trainings/${id}`, {
-                method: 'DELETE',
-            });
-
-            if (!res.ok) {
-                const payload = await res.json();
-                throw new Error(payload.error || 'Failed to delete training');
-            }
-
-            router.push('/trainings');
-        } catch (err) {
-            const message = err instanceof Error ? err.message : 'Failed to delete training';
-            setError(message);
-            setIsDeleting(false);
-            setShowDeleteDialog(false);
-        }
-    };
-
-    if (isLoading) {
-        return (
-            <div className="min-h-screen bg-gray-50 dark:bg-slate-950">
-                <nav className="nav-header">
-                    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-                        <Link href="/trainings" className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-all flex items-center gap-2 hover:-translate-x-0.5">
-                            <ChevronLeft className="w-4 h-4 transition-transform" />
-                            Back to Workout Plans
-                        </Link>
-                        <ThemeToggle />
-                    </div>
-                </nav>
-                <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-                    <div className="text-center text-slate-600 dark:text-slate-400">Loading training details...</div>
-                </main>
-            </div>
+  useEffect(() => {
+    if (!training) return;
+    const fetchLogs = async () => {
+      try {
+        const res = await fetch('/api/workout-logs', { credentials: 'include' });
+        if (!res.ok) return;
+        const logs = (await res.json()) as Array<{ training: string | { _id: string } }>;
+        setHasLog(
+          logs.some((log) => (typeof log.training === 'string' ? log.training : log.training._id) === training._id)
         );
-    }
+      } catch {
+        setHasLog(false);
+      }
+    };
 
-    if (error || !training) {
-        return (
-            <div className="min-h-screen bg-gray-50 dark:bg-slate-950">
-                <nav className="nav-header">
-                    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-                        <Link href="/trainings" className="text-primary-600 dark:text-primary-400 hover:underline flex items-center gap-2">
-                            <ChevronLeft className="w-4 h-4" />
-                            Back to Trainings
-                        </Link>
-                        <ThemeToggle />
-                    </div>
-                </nav>
-                <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-                    <Card className="card-base border-danger-200 dark:border-danger-800 bg-danger-50 dark:bg-danger-950">
-                        <CardContent className="py-8 text-center text-danger-700 dark:text-danger-200">
-                            {error || 'Training not found'}
-                        </CardContent>
-                    </Card>
-                </main>
-            </div>
-        );
-    }
+    void fetchLogs();
+  }, [training]);
 
+  if (isLoading) {
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-slate-950">
-            {/* Navigation Header */}
-            <nav className="nav-header">
-                <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-                    <Link href="/trainings" className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-all flex items-center gap-2 hover:-translate-x-0.5">
-                        <ChevronLeft className="w-4 h-4 transition-transform" />
-                        Back to Workout Plans
-                    </Link>
-                    <ThemeToggle />
-                </div>
-            </nav>
-
-            {/* Main Content */}
-            <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-                {/* Header Card */}
-                <Card className="card-base shadow-lg mb-8">
-                    <CardHeader className="border-b border-slate-200 dark:border-slate-700 pb-6">
-                        <div className="flex justify-between items-start gap-4">
-                            <div>
-                                <CardTitle className="text-3xl mb-2">{training.title}</CardTitle>
-                                <CardDescription className="text-base text-slate-600 dark:text-slate-400">
-                                    {training.description || 'No description provided'}
-                                </CardDescription>
-                            </div>
-                            <div className="flex gap-2">
-                                {getStatusBadge(training.status)}
-                            </div>
-                        </div>
-                    </CardHeader>
-
-                    <CardContent className="pt-6">
-                        {/* Training Info Grid */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                            <div>
-                                <div className="flex items-center gap-3 mb-2">
-                                    <Calendar className="w-5 h-5 text-primary-600 dark:text-primary-400" />
-                                    <p className="text-label">Scheduled Date</p>
-                                </div>
-                                <p className="text-slate-700 dark:text-slate-300 ml-8">{formatDate(training.scheduledDate)}</p>
-                            </div>
-
-                            {training.team && (
-                                <div>
-                                    <div className="flex items-center gap-3 mb-2">
-                                        <Dumbbell className="w-5 h-5 text-accent-600 dark:text-accent-400" />
-                                        <p className="text-label">Team</p>
-                                    </div>
-                                    <p className="text-slate-700 dark:text-slate-300 ml-8">{training.team.name}</p>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Action Buttons */}
-                        {((activeTeam.role || user?.role) === 'trainer' || (activeTeam.role || user?.role) === 'coach') && (
-                            <div className="flex gap-3">
-                                <Link href={`/trainings/${id}/edit`} className="flex-1">
-                                    <Button className="btn-primary w-full">
-                                        <Edit className="w-4 h-4 mr-2" />
-                                        Edit Training
-                                    </Button>
-                                </Link>
-                                <Button
-                                    variant="destructive"
-                                    onClick={() => setShowDeleteDialog(true)}
-                                    disabled={isDeleting}
-                                >
-                                    <Trash2 className="w-4 h-4 mr-2" />
-                                    Delete
-                                </Button>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-
-                {/* Exercises Section */}
-                <div>
-                    <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
-                        <Dumbbell className="w-6 h-6 text-primary-600 dark:text-primary-400" />
-                        Exercises ({training.exercises.length})
-                    </h2>
-
-                    <div className="grid grid-cols-1 gap-4">
-                        {training.exercises.length > 0 ? (
-                            training.exercises.map((exercise, index) => (
-                                <Card key={index} className="card-base hover:shadow-md transition-shadow">
-                                    <CardContent className="pt-6">
-                                        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                                            <div>
-                                                <p className="text-label text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1">
-                                                    Exercise
-                                                </p>
-                                                <p className="text-lg font-semibold text-slate-900 dark:text-white">{exercise.name}</p>
-                                            </div>
-
-                                            <div>
-                                                <p className="text-label text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1">
-                                                    Sets
-                                                </p>
-                                                <p className="text-lg font-semibold text-accent-600 dark:text-accent-400">{exercise.sets}</p>
-                                            </div>
-
-                                            <div>
-                                                <p className="text-label text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1">
-                                                    Reps
-                                                </p>
-                                                <p className="text-lg font-semibold text-accent-600 dark:text-accent-400">{exercise.reps}</p>
-                                            </div>
-
-                                            <div>
-                                                <p className="text-label text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1">
-                                                    Rest Time
-                                                </p>
-                                                <p className="text-lg font-semibold text-accent-600 dark:text-accent-400">{exercise.restTime || 90}s</p>
-                                            </div>
-
-                                            {exercise.notes && (
-                                                <div>
-                                                    <p className="text-label text-xs uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1">
-                                                        Notes
-                                                    </p>
-                                                    <p className="text-slate-700 dark:text-slate-300">{exercise.notes}</p>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            ))
-                        ) : (
-                            <Card className="card-base">
-                                <CardContent className="py-8 text-center text-muted">No exercises added yet</CardContent>
-                            </Card>
-                        )}
-                    </div>
-                </div>
-            </main>
-
-            {/* Delete Confirmation Dialog */}
-            <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Delete Training</DialogTitle>
-                        <DialogDescription>
-                            Are you sure you want to delete "<span className="font-semibold">{training?.title}</span>"? This action cannot be undone.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter className="gap-2">
-                        <Button
-                            variant="outline"
-                            onClick={() => setShowDeleteDialog(false)}
-                            disabled={isDeleting}
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            variant="destructive"
-                            onClick={handleConfirmDelete}
-                            disabled={isDeleting}
-                        >
-                            {isDeleting ? 'Deleting...' : 'Delete'}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-        </div>
+      <div className="min-h-screen bg-white dark:bg-slate-950">
+        <Navbar currentPage="workouts" />
+        <main className="mx-auto max-w-4xl px-4 py-12 text-center text-slate-600 dark:text-slate-400 sm:px-6 lg:px-8">
+          Loading workout...
+        </main>
+      </div>
     );
+  }
+
+  if (error || !training) {
+    return (
+      <div className="min-h-screen bg-white dark:bg-slate-950">
+        <Navbar currentPage="workouts" />
+        <main className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
+          <Card>
+            <CardContent className="py-8 text-center text-red-600">{error || 'Workout not found'}</CardContent>
+          </Card>
+        </main>
+      </div>
+    );
+  }
+
+  const cardioSummary = [
+    training.cardioBlock?.type,
+    training.cardioBlock?.durationMinutes ? `${training.cardioBlock.durationMinutes} min` : '',
+    training.cardioBlock?.intensity,
+  ]
+    .filter(Boolean)
+    .join(' • ');
+
+  return (
+    <div className="min-h-screen bg-white text-slate-900 dark:bg-slate-950 dark:text-slate-50">
+      <Navbar currentPage="workouts" />
+
+      <main className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
+        <button
+          type="button"
+          onClick={() => router.back()}
+          className="mb-6 inline-flex items-center gap-2 text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back
+        </button>
+
+        <Card className="mb-8 shadow-lg">
+          <CardHeader className="gap-4 border-b border-slate-200 dark:border-slate-700">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <CardTitle className="text-3xl">{training.title}</CardTitle>
+                {training.description && <CardDescription className="mt-2 text-base">{training.description}</CardDescription>}
+              </div>
+              <Badge variant={training.status === 'completed' || hasLog ? 'default' : 'secondary'}>
+                {hasLog ? 'Completed' : training.status}
+              </Badge>
+            </div>
+            <div className="flex flex-wrap gap-4 text-sm text-slate-600 dark:text-slate-400">
+              <span>📅 {formatDateLabel(training.scheduledDate)}</span>
+              {training.dayFocus && <span>🎯 {training.dayFocus}</span>}
+              {training.assignedTo?.name && <span>👤 {training.assignedTo.name}</span>}
+              {training.workoutPlan?._id && (
+                <Link href={`/plans/${training.workoutPlan._id}`} className="text-blue-600 hover:underline dark:text-blue-400">
+                  Plan: {training.workoutPlan.title}
+                </Link>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-6 pt-6">
+            {training.warmup?.length ? (
+              <div className="rounded-lg bg-slate-50 p-4 dark:bg-slate-900">
+                <div className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
+                  <Flame className="h-4 w-4" />
+                  Warm-up
+                </div>
+                <ul className="mt-3 space-y-2 text-sm text-slate-600 dark:text-slate-400">
+                  {training.warmup.map((item) => (
+                    <li key={item}>• {item}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+
+            {(cardioSummary || training.cardioBlock?.instructions) && (
+              <div className="rounded-lg bg-slate-50 p-4 dark:bg-slate-900">
+                <div className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
+                  <HeartPulse className="h-4 w-4" />
+                  Cardio Block
+                </div>
+                {cardioSummary && <p className="mt-3 text-sm text-slate-600 dark:text-slate-400">{cardioSummary}</p>}
+                {training.cardioBlock?.instructions && (
+                  <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{training.cardioBlock.instructions}</p>
+                )}
+              </div>
+            )}
+
+            {(training.intensityNotes || training.instructions?.length || training.assignedTo?.name) && (
+              <div className="grid gap-4 md:grid-cols-2">
+                {training.intensityNotes && (
+                  <div className="rounded-lg border border-slate-200 p-4 dark:border-slate-700">
+                    <div className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
+                      <Timer className="h-4 w-4" />
+                      Intensity Notes
+                    </div>
+                    <p className="mt-3 text-sm text-slate-600 dark:text-slate-400">{training.intensityNotes}</p>
+                  </div>
+                )}
+                {training.assignedTo?.name && (
+                  <div className="rounded-lg border border-slate-200 p-4 dark:border-slate-700">
+                    <div className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
+                      <User2 className="h-4 w-4" />
+                      Assigned User
+                    </div>
+                    <p className="mt-3 text-sm text-slate-600 dark:text-slate-400">{training.assignedTo.name}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-500">{training.assignedTo.email}</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {training.instructions?.length ? (
+              <div>
+                <h2 className="mb-3 text-lg font-semibold">Instructions</h2>
+                <ul className="space-y-2 text-sm text-slate-600 dark:text-slate-400">
+                  {training.instructions.map((instruction) => (
+                    <li key={instruction}>• {instruction}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+
+            <div>
+              <h2 className="mb-4 text-lg font-semibold">Exercises</h2>
+              <div className="space-y-4">
+                {training.exercises.map((exercise, index) => (
+                  <Card key={`${exercise.name}-${index}`} className="border border-slate-200 dark:border-slate-800">
+                    <CardContent className="pt-6">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <h3 className="font-semibold">{exercise.name}</h3>
+                          <p className="text-sm text-slate-600 dark:text-slate-400">
+                            {exercise.sets} sets × {exercise.reps}
+                          </p>
+                        </div>
+                        {exercise.restTime ? (
+                          <Badge variant="secondary">Rest {exercise.restTime}s</Badge>
+                        ) : null}
+                      </div>
+                      {exercise.notes && (
+                        <p className="mt-3 text-sm text-slate-600 dark:text-slate-400">{exercise.notes}</p>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-3 sm:flex-row">
+              {!hasLog && (
+                <Link href={`/dashboard/log-workout/${training._id}`} className="flex-1">
+                  <Button className="w-full">Log Workout</Button>
+                </Link>
+              )}
+              {canManage && (
+                <Link href={`/trainings/${training._id}/edit`} className="sm:flex-none">
+                  <Button variant="outline" className="w-full sm:w-auto">
+                    Edit Workout
+                  </Button>
+                </Link>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </main>
+    </div>
+  );
 }
