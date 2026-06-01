@@ -11,7 +11,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
 
 type Exercise = {
   name: string;
@@ -209,9 +208,11 @@ export default function LogWorkoutPage() {
                         const checked = skippedExercises.includes(exercise.name);
                         return (
                           <label key={exercise.name} className="flex items-start gap-3 text-sm text-slate-700 dark:text-slate-300">
-                            <Checkbox
+                            <input
+                              type="checkbox"
                               checked={checked}
-                              onCheckedChange={(value) => toggleSkippedExercise(exercise.name, value === true)}
+                              onChange={(event) => toggleSkippedExercise(exercise.name, event.target.checked)}
+                              className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                             />
                             <span>
                               <span className="font-medium">{exercise.name}</span>

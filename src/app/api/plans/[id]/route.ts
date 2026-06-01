@@ -1,3 +1,4 @@
+import { Types } from 'mongoose';
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db/mongodb';
 import { verifyToken } from '@/lib/auth';
@@ -101,7 +102,9 @@ export async function PUT(
     if (body.title !== undefined) plan.title = body.title;
     if (body.description !== undefined) plan.description = body.description;
     if (body.isPersonal !== undefined) plan.isPersonal = body.isPersonal;
-    if (body.assignee !== undefined) plan.assignee = body.assignee || undefined;
+    if (body.assignee !== undefined) {
+      plan.assignee = body.assignee ? new Types.ObjectId(body.assignee) : undefined;
+    }
     if (body.goalSummary !== undefined) plan.goalSummary = body.goalSummary;
     if (body.weeklyStructure !== undefined) plan.weeklyStructure = body.weeklyStructure;
     if (body.progressionNotes !== undefined) plan.progressionNotes = body.progressionNotes;
@@ -112,6 +115,9 @@ export async function PUT(
       plan.aiMetadata = body.aiMetadata
         ? {
             ...body.aiMetadata,
+            requestId: body.aiMetadata.requestId
+              ? new Types.ObjectId(body.aiMetadata.requestId)
+              : undefined,
             generatedAt: body.aiMetadata.generatedAt
               ? new Date(body.aiMetadata.generatedAt)
               : undefined,

@@ -19,11 +19,8 @@ if (!MONGODB_URI) {
   throw new Error('Please define the MONGODB_URI environment variable');
 }
 
-let cached = globalThis.mongoose;
-
-if (!cached) {
-  cached = globalThis.mongoose = { conn: null, promise: null };
-}
+const cached: MongooseCache = globalThis.mongoose ?? { conn: null, promise: null };
+globalThis.mongoose = cached;
 
 export async function connectDB(): Promise<Mongoose> {
   if (cached.conn) {
