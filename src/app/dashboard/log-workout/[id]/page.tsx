@@ -38,7 +38,7 @@ export default function LogWorkoutPage() {
   const [sessionRating, setSessionRating] = useState('5');
   const [notes, setNotes] = useState('');
   const [completionStatus, setCompletionStatus] = useState<'completed' | 'partial' | 'skipped'>('completed');
-  const [sessionFeeling, setSessionFeeling] = useState<'great' | 'good' | 'neutral' | 'low-energy' | 'pain'>('good');
+  const [sessionFeeling, setSessionFeeling] = useState<'great' | 'good' | 'okay' | 'low' | 'bad'>('good');
   const [overallFeedback, setOverallFeedback] = useState('');
   const [skippedExercises, setSkippedExercises] = useState<string[]>([]);
 
@@ -192,9 +192,9 @@ export default function LogWorkoutPage() {
                   <SelectContent>
                     <SelectItem value="great">Great</SelectItem>
                     <SelectItem value="good">Good</SelectItem>
-                    <SelectItem value="neutral">Neutral</SelectItem>
-                    <SelectItem value="low-energy">Low energy</SelectItem>
-                    <SelectItem value="pain">Pain or discomfort</SelectItem>
+                    <SelectItem value="okay">Okay</SelectItem>
+                    <SelectItem value="low">Low energy</SelectItem>
+                    <SelectItem value="bad">Pain or discomfort</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
