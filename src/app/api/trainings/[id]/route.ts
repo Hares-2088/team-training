@@ -1,190 +1,169 @@
-import { connectDB } from '@/lib/db/mongodb';
-import Training from '@/models/Training';
-import Team from '@/models/Team';
-import User from '@/models/User';
 import { NextRequest, NextResponse } from 'next/server';
+import { connectDB } from '@/lib/db/mongodb';
 import { verifyToken } from '@/lib/auth';
 import { toDateAtLocalMidnight } from '@/lib/date';
+import { canViewResource, getTeamAccess, stringifyId, toSerializable } from '@/lib/trainings/access';
+import { trainingUpdateSchema } from '@/lib/validation/training';
+import Training from '@/models/Training';
 
 export async function GET(
-    request: NextRequest,
-    { params }: { params: Promise<{ id: string }> | { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> | { id: string } }
 ) {
-    try {
-        await connectDB();
+  try {
+    await connectDB();
 
-        // Get user from token
-        const token = request.cookies.get('auth-token')?.value;
-        if (!token) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
-
-        const decoded = verifyToken(token);
-        if (!decoded) {
-            return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-        }
-
-        const resolvedParams = await Promise.resolve(params);
-        const id = resolvedParams.id;
-
-        if (!id) {
-            return NextResponse.json({ error: 'Training ID is required' }, { status: 400 });
-        }
-
-        const training = await Training.findById(id).populate('team', 'name');
-
-        if (!training) {
-            return NextResponse.json({ error: 'Training not found' }, { status: 404 });
-        }
-
-        // Directly check team membership to avoid false 403s
-        const team = await Team.findById(training.team)
-            .populate('members', '_id')
-            .select('trainer members');
-
-        if (!team) {
-            return NextResponse.json({ error: 'Team not found' }, { status: 404 });
-        }
-
-        const isTrainer = String(team.trainer) === String(decoded.userId);
-        const isMember = team.members.some((member: any) => String(member?._id ?? member) === String(decoded.userId));
-
-        if (!isTrainer && !isMember) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-        }
-
-        return NextResponse.json({ training }, { status: 200 });
-    } catch (error: any) {
-        console.error('Error fetching training:', error);
-        return NextResponse.json(
-            { error: error.message || 'Failed to fetch training' },
-            { status: 500 }
-        );
+    const token = request.cookies.get('auth-token')?.value;
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    const decoded = verifyToken(token);
+    if (!decoded) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+
+    const resolvedParams = await Promise.resolve(params);
+    const id = resolvedParams.id;
+    if (!id) {
+      return NextResponse.json({ error: 'Training ID is required' }, { status: 400 });
+    }
+
+    const training = await Training.findById(id)
+      .populate('team', 'name')
+      .populate('assignedTo', 'name email')
+      .populate('plan', 'title generationSource goalSummary')
+      .lean();
+
+    if (!training) {
+      return NextResponse.json({ error: 'Training not found' }, { status: 404 });
+    }
+
+    const access = await getTeamAccess(stringifyId(training.team), decoded.userId);
+    if (!access || !canViewResource(training, decoded.userId, access.canManage, 'assignedTo')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
+
+    return NextResponse.json({ training: toSerializable(training) }, { status: 200 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to fetch training';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }
 
 export async function PATCH(
-    request: NextRequest,
-    { params }: { params: Promise<{ id: string }> | { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> | { id: string } }
 ) {
-    try {
-        await connectDB();
+  try {
+    await connectDB();
 
-        // Get user from token
-        const token = request.cookies.get('auth-token')?.value;
-        if (!token) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
-
-        const decoded = verifyToken(token);
-        if (!decoded) {
-            return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-        }
-
-        const resolvedParams = await Promise.resolve(params);
-        const id = resolvedParams.id;
-        const body = await request.json();
-
-        const training = await Training.findById(id);
-        if (!training) {
-            return NextResponse.json({ error: 'Training not found' }, { status: 404 });
-        }
-
-        // Check if user is the trainer of the training's team OR coach in the team
-        const team = await Team.findById(training.team).populate('members', '_id');
-        if (!team) {
-            return NextResponse.json({ error: 'Team not found' }, { status: 404 });
-        }
-        const isTrainer = team.trainer.toString() === decoded.userId;
-        const requester = await User.findById(decoded.userId).select('role');
-        const isCoachMember = requester?.role === 'coach' && team.members.some((m: any) => String(m?._id ?? m) === decoded.userId);
-        if (!isTrainer && !isCoachMember) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-        }
-
-        const updates: Record<string, unknown> = {};
-        const allowedFields = ['title', 'description', 'exercises', 'scheduledDate', 'status'];
-
-        for (const field of allowedFields) {
-            if (field in body) {
-                if (field === 'scheduledDate') {
-                    const scheduledDate = toDateAtLocalMidnight(body[field]);
-                    if (Number.isNaN(scheduledDate.getTime())) {
-                        return NextResponse.json({ error: 'Invalid scheduledDate' }, { status: 400 });
-                    }
-                    updates[field] = scheduledDate;
-                } else {
-                    updates[field] = body[field];
-                }
-            }
-        }
-
-        const updatedTraining = await Training.findByIdAndUpdate(id, updates, { new: true });
-
-        if (!updatedTraining) {
-            return NextResponse.json({ error: 'Training not found' }, { status: 404 });
-        }
-
-        return NextResponse.json({ training: updatedTraining }, { status: 200 });
-    } catch (error: any) {
-        console.error('Error updating training:', error);
-        return NextResponse.json(
-            { error: error.message || 'Failed to update training' },
-            { status: 500 }
-        );
+    const token = request.cookies.get('auth-token')?.value;
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    const decoded = verifyToken(token);
+    if (!decoded) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+
+    const resolvedParams = await Promise.resolve(params);
+    const id = resolvedParams.id;
+    const training = await Training.findById(id);
+    if (!training) {
+      return NextResponse.json({ error: 'Training not found' }, { status: 404 });
+    }
+
+    const access = await getTeamAccess(stringifyId(training.team), decoded.userId);
+    if (!access) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
+
+    const isOwner = stringifyId(training.createdBy) === decoded.userId;
+    if (!access.canManage && !isOwner) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
+
+    const parseResult = trainingUpdateSchema.safeParse(await request.json());
+    if (!parseResult.success) {
+      return NextResponse.json(
+        { error: parseResult.error.issues[0]?.message || 'Invalid training payload' },
+        { status: 400 }
+      );
+    }
+
+    const body = parseResult.data;
+    if (body.assignedTo && body.assignedTo !== access.team.trainer && !access.team.members.includes(body.assignedTo)) {
+      return NextResponse.json({ error: 'Assigned user must belong to the selected team' }, { status: 400 });
+    }
+
+    if (body.title !== undefined) training.title = body.title;
+    if (body.description !== undefined) training.description = body.description;
+    if (body.exercises !== undefined) training.exercises = body.exercises;
+    if (body.status !== undefined) training.status = body.status;
+    if (body.isPersonal !== undefined) training.isPersonal = body.isPersonal;
+    if (body.assignedTo !== undefined) training.assignedTo = body.assignedTo || undefined;
+    if (body.warmup !== undefined) training.warmup = body.warmup;
+    if (body.dayFocus !== undefined) training.dayFocus = body.dayFocus;
+    if (body.cardioBlock !== undefined) training.cardioBlock = body.cardioBlock;
+    if (body.intensityNotes !== undefined) training.intensityNotes = body.intensityNotes;
+    if (body.instructions !== undefined) training.instructions = body.instructions;
+    if (body.planId !== undefined) training.plan = body.planId || undefined;
+    if (body.scheduledDate !== undefined) {
+      const scheduledDate = toDateAtLocalMidnight(body.scheduledDate);
+      if (Number.isNaN(scheduledDate.getTime())) {
+        return NextResponse.json({ error: 'Invalid scheduledDate' }, { status: 400 });
+      }
+      training.scheduledDate = scheduledDate;
+    }
+
+    await training.save();
+    return NextResponse.json({ training: toSerializable(training.toObject()) }, { status: 200 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to update training';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }
 
 export async function DELETE(
-    request: NextRequest,
-    { params }: { params: Promise<{ id: string }> | { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> | { id: string } }
 ) {
-    try {
-        await connectDB();
+  try {
+    await connectDB();
 
-        // Get user from token
-        const token = request.cookies.get('auth-token')?.value;
-        if (!token) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
-
-        const decoded = verifyToken(token);
-        if (!decoded) {
-            return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-        }
-
-        const resolvedParams = await Promise.resolve(params);
-        const id = resolvedParams.id;
-
-        const training = await Training.findById(id);
-        if (!training) {
-            return NextResponse.json({ error: 'Training not found' }, { status: 404 });
-        }
-
-        // Check if user is the trainer of the training's team OR coach in the team
-        const team = await Team.findById(training.team).populate('members', '_id');
-        if (!team) {
-            return NextResponse.json({ error: 'Team not found' }, { status: 404 });
-        }
-        const isTrainer = team.trainer.toString() === decoded.userId;
-        const requester = await User.findById(decoded.userId).select('role');
-        const isCoachMember = requester?.role === 'coach' && team.members.some((m: any) => String(m?._id ?? m) === decoded.userId);
-        if (!isTrainer && !isCoachMember) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-        }
-
-        const deletedTraining = await Training.findByIdAndDelete(id);
-
-        if (!deletedTraining) {
-            return NextResponse.json({ error: 'Training not found' }, { status: 404 });
-        }
-
-        return NextResponse.json({ message: 'Training deleted' }, { status: 200 });
-    } catch (error: any) {
-        console.error('Error deleting training:', error);
-        return NextResponse.json(
-            { error: error.message || 'Failed to delete training' },
-            { status: 500 }
-        );
+    const token = request.cookies.get('auth-token')?.value;
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    const decoded = verifyToken(token);
+    if (!decoded) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+
+    const resolvedParams = await Promise.resolve(params);
+    const id = resolvedParams.id;
+    const training = await Training.findById(id);
+    if (!training) {
+      return NextResponse.json({ error: 'Training not found' }, { status: 404 });
+    }
+
+    const access = await getTeamAccess(stringifyId(training.team), decoded.userId);
+    if (!access) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
+
+    const isOwner = stringifyId(training.createdBy) === decoded.userId;
+    if (!access.canManage && !isOwner) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
+
+    await Training.findByIdAndDelete(id);
+    return NextResponse.json({ message: 'Training deleted' }, { status: 200 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to delete training';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }

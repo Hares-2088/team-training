@@ -4,72 +4,56 @@ import WorkoutLog from '@/models/WorkoutLog';
 import Team from '@/models/Team';
 import Training from '@/models/Training';
 import { getUserFromRequest } from '@/lib/auth';
+import { getAccessFlags, stringifyId, toSerializable } from '@/lib/trainings/access';
 
 export async function GET(request: NextRequest) {
-    try {
-        await connectDB();
+  try {
+    await connectDB();
 
-        // Get user from JWT token
-        const currentUser = getUserFromRequest(request);
-        if (!currentUser) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
-
-        const url = new URL(request.url);
-        const mineOnly = url.searchParams.get('mine') === 'true';
-
-        // When mine=true (or for non-trainer roles), always return only the current user's own logs.
-        // For trainers without mine=true, return all team member logs (for team monitoring).
-        if (mineOnly) {
-            const workoutLogs = await WorkoutLog.find({ member: currentUser.userId })
-                .populate('training', 'title scheduledDate')
-                .populate('member', 'name')
-                .sort({ completedAt: -1 });
-            return NextResponse.json(workoutLogs);
-        }
-
-        const activeTeamId = request.cookies.get('active-team')?.value || null;
-
-        // Members/coaches: always can see their own logs (all teams)
-        // Trainers: scope to their teams; if active team set, narrow to it
-
-        let workoutLogs;
-
-        if (activeTeamId) {
-            const activeTeam = await Team.findById(activeTeamId);
-            if (activeTeam && String(activeTeam.trainer) === currentUser.userId) {
-                const trainings = await Training.find({ team: activeTeamId });
-                const trainingIds = trainings.map((t) => t._id);
-                workoutLogs = await WorkoutLog.find({ training: { $in: trainingIds } })
-                    .populate('training', 'title scheduledDate')
-                    .populate('member', 'name')
-                    .sort({ completedAt: -1 });
-            } else {
-                workoutLogs = await WorkoutLog.find({ member: currentUser.userId })
-                    .populate('training', 'title scheduledDate')
-                    .populate('member', 'name')
-                    .sort({ completedAt: -1 });
-            }
-        } else if (currentUser.role === 'trainer') {
-            const teams = await Team.find({ trainer: currentUser.userId });
-            const teamIds = teams.map((t) => t._id);
-            const trainings = await Training.find({ team: { $in: teamIds } });
-            const trainingIds = trainings.map((t) => t._id);
-
-            workoutLogs = await WorkoutLog.find({ training: { $in: trainingIds } })
-                .populate('training', 'title scheduledDate')
-                .populate('member', 'name')
-                .sort({ completedAt: -1 });
-        } else {
-            workoutLogs = await WorkoutLog.find({ member: currentUser.userId })
-                .populate('training', 'title scheduledDate')
-                .populate('member', 'name')
-                .sort({ completedAt: -1 });
-        }
-
-        return NextResponse.json(workoutLogs);
-    } catch (error) {
-        console.error('Error fetching workout logs:', error);
-        return NextResponse.json({ error: 'Failed to fetch workout logs' }, { status: 500 });
+    const currentUser = getUserFromRequest(request);
+    if (!currentUser) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    const url = new URL(request.url);
+    const mineOnly = url.searchParams.get('mine') === 'true';
+    const activeTeamId = request.cookies.get('active-team')?.value || null;
+
+    if (mineOnly) {
+      const ownLogs = await WorkoutLog.find({ member: currentUser.userId })
+        .populate('training', 'title scheduledDate dayFocus')
+        .populate('member', 'name')
+        .sort({ completedAt: -1 })
+        .lean();
+      return NextResponse.json(toSerializable(ownLogs));
+    }
+
+    if (activeTeamId) {
+      const team = await Team.findById(activeTeamId).select('trainer members memberRoles').lean();
+      if (team) {
+        const access = getAccessFlags(team, currentUser.userId);
+        if (access.canManage) {
+          const trainings = await Training.find({ team: activeTeamId }).select('_id').lean();
+          const trainingIds = trainings.map((training) => training._id);
+          const logs = await WorkoutLog.find({ training: { $in: trainingIds } })
+            .populate('training', 'title scheduledDate dayFocus assignedTo')
+            .populate('member', 'name')
+            .sort({ completedAt: -1 })
+            .lean();
+          return NextResponse.json(toSerializable(logs));
+        }
+      }
+    }
+
+    const workoutLogs = await WorkoutLog.find({ member: currentUser.userId })
+      .populate('training', 'title scheduledDate dayFocus')
+      .populate('member', 'name')
+      .sort({ completedAt: -1 })
+      .lean();
+
+    return NextResponse.json(toSerializable(workoutLogs));
+  } catch (error) {
+    console.error('Error fetching workout logs:', error);
+    return NextResponse.json({ error: 'Failed to fetch workout logs' }, { status: 500 });
+  }
 }
