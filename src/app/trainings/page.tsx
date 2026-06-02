@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Sparkles } from 'lucide-react';
 import { Navbar } from '@/components/Navbar';
 import { PlanCard } from '@/components/PlanCard';
 import { Button } from '@/components/ui/button';
@@ -130,8 +131,9 @@ export default function TrainingsPage() {
           <div className="flex flex-col gap-2 sm:flex-row">
             {canManagePlans && (
               <Link href="/trainings/ai" className="sm:flex-none">
-                <Button size="lg" className="w-full sm:w-auto">
-                  Generate AI Training
+                <Button size="lg" className="w-full gap-2 sm:w-auto">
+                  <Sparkles className="h-4 w-4" />
+                  Generate Training
                 </Button>
               </Link>
             )}
@@ -219,7 +221,10 @@ export default function TrainingsPage() {
                 <div className="mt-4 flex flex-col justify-center gap-2 sm:flex-row">
                   {canManagePlans && (
                     <Link href="/trainings/ai" className="inline-block">
-                      <Button>Generate AI Plan</Button>
+                      <Button className="gap-2">
+                        <Sparkles className="h-4 w-4" />
+                        Generate Training
+                      </Button>
                     </Link>
                   )}
                   <Link href="/trainings/create" className="inline-block">
