@@ -28,7 +28,7 @@ export default function Home() {
         <div className="text-center space-y-8 mb-20">
           <div className="space-y-4">
             <h2 className="text-5xl font-bold text-slate-900 dark:text-white">
-              Track Your Team's Fitness Journey
+              Track Your Team&apos;s Fitness Journey
             </h2>
             <p className="text-xl text-slate-600 dark:text-slate-400">
               A beautiful, intuitive platform for trainers to create workouts and members to log their progress
@@ -82,7 +82,7 @@ export default function Home() {
             </CardHeader>
             <CardContent>
               <p className="text-slate-600 dark:text-slate-400">
-                Organize teams, invite members, and monitor everyone's progress in real-time
+                Organize teams, invite members, and monitor everyone&apos;s progress in real-time
               </p>
             </CardContent>
           </Card>

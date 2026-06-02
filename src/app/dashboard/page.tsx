@@ -213,7 +213,7 @@ export default function Dashboard() {
 
         <Card className="border-0 shadow-lg">
           <CardHeader>
-            <CardTitle>Today's Workout</CardTitle>
+            <CardTitle>Today&apos;s Workout</CardTitle>
             <CardDescription>
               {isTrainerView
                 ? 'Your scheduled training for today'
@@ -222,7 +222,7 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent className="space-y-4">
             {dataLoading ? (
-              <p className="text-sm text-slate-500 dark:text-slate-400">Loading today's training...</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">Loading today&apos;s training...</p>
             ) : todaysWorkout ? (
               <>
                 <div className="rounded-xl bg-slate-50 p-4 dark:bg-slate-900">

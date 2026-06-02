@@ -58,7 +58,7 @@ export function AddMemberModal({ isOpen, onClose, teamId, teamName }: AddMemberM
                 <DialogHeader>
                     <DialogTitle>Add Team Member</DialogTitle>
                     <DialogDescription>
-                        Invite members to join "{teamName}"
+                        Invite members to join &quot;{teamName}&quot;
                     </DialogDescription>
                 </DialogHeader>
 

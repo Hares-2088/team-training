@@ -358,7 +358,7 @@ export default function TeamDetailPage() {
                     <DialogHeader>
                         <DialogTitle>Delete Team</DialogTitle>
                         <DialogDescription>
-                            Are you sure you want to delete "<span className="font-semibold">{team?.name}</span>"? This action cannot be undone.
+                            Are you sure you want to delete &quot;<span className="font-semibold">{team?.name}</span>&quot;? This action cannot be undone.
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter className="gap-2">
@@ -388,7 +388,7 @@ export default function TeamDetailPage() {
                     <DialogHeader>
                         <DialogTitle>Remove Member</DialogTitle>
                         <DialogDescription>
-                            Are you sure you want to remove "<span className="font-semibold">{showRemoveMemberDialog.memberName}</span>" from the team?
+                            Are you sure you want to remove &quot;<span className="font-semibold">{showRemoveMemberDialog.memberName}</span>&quot; from the team?
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter className="gap-2">

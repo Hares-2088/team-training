@@ -110,7 +110,7 @@ export default function InviteLinkPage() {
                         {showRegisterOption && !isJoining && !authLoading && !teamName && !error && (
                             <div className="space-y-4">
                                 <p className="text-slate-700 dark:text-slate-300 mb-4">
-                                    You're currently logged in as <strong>{user?.name}</strong>.
+                                    You&apos;re currently logged in as <strong>{user?.name}</strong>.
                                 </p>
                                 <div className="space-y-3">
                                     <Button onClick={joinTeam} className="w-full" variant="default">
@@ -126,7 +126,7 @@ export default function InviteLinkPage() {
                         {!isJoining && !authLoading && !error && teamName && (
                             <div className="space-y-4">
                                 <p className="text-slate-700 dark:text-slate-300">
-                                    You've successfully joined <strong>{teamName}</strong>!
+                                    You&apos;ve successfully joined <strong>{teamName}</strong>!
                                 </p>
                                 <p className="text-sm text-slate-600 dark:text-slate-400">
                                     Redirecting to dashboard...
