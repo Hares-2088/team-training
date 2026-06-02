@@ -242,6 +242,8 @@ export function GenerateAITrainingForm({ onSuccess }: Readonly<GenerateAITrainin
     }
   };
 
+  const submitLabel = isSubmitting ? 'Saving...' : aiEnabled ? 'Generate Training' : 'Create Plan';
+
   return (
     <Card className="w-full max-w-3xl">
       <CardHeader>
@@ -350,7 +352,6 @@ export function GenerateAITrainingForm({ onSuccess }: Readonly<GenerateAITrainin
                   className="mt-2"
                   rows={4}
                   placeholder="What outcome should this plan target?"
-                  required={aiEnabled}
                 />
               </div>
 
@@ -459,7 +460,7 @@ export function GenerateAITrainingForm({ onSuccess }: Readonly<GenerateAITrainin
           )}
 
           <Button type="submit" className="w-full" size="lg" disabled={isSubmitting}>
-            {isSubmitting ? 'Saving...' : aiEnabled ? 'Generate Training' : 'Create Plan'}
+            {submitLabel}
           </Button>
         </form>
       </CardContent>

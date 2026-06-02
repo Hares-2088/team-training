@@ -148,7 +148,7 @@ export default function WorkoutLibraryPage() {
     const role = activeTeam.role || user?.role;
     const isTrainer = role === 'trainer';
     const isCoach = role === 'coach';
-    const canAddTemplateToPlan = isTrainer || isCoach;
+    const canManageWorkouts = isTrainer || isCoach;
 
     const addToPlan = async (templateId: string, planIdOverride?: string) => {
         const targetPlanId = planIdOverride ?? selectedPlanId;
@@ -225,7 +225,7 @@ export default function WorkoutLibraryPage() {
                     scheduledDate: newWorkoutDate,
                     exercises: [],
                     team: activeTeam.teamId,
-                    isPersonal: !canAddTemplateToPlan,
+                    isPersonal: !canManageWorkouts,
                 }),
             });
 
@@ -431,7 +431,7 @@ export default function WorkoutLibraryPage() {
                                         <Link href={`/library/${t._id}`} className="flex-1">
                                             <Button className="w-full sm:w-auto">View Details</Button>
                                         </Link>
-                                        {canAddTemplateToPlan ? (
+                                        {canManageWorkouts ? (
                                             <Button
                                                 variant="outline"
                                                 className="w-full sm:w-auto flex-1 sm:flex-none"
@@ -464,7 +464,7 @@ export default function WorkoutLibraryPage() {
                 )}
             </main>
 
-            {showPlanSelector && canAddTemplateToPlan && (
+            {showPlanSelector && canManageWorkouts && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                     <Card className="w-full max-w-md">
                         <CardHeader>
