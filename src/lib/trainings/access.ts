@@ -28,11 +28,16 @@ type ResourceLike = {
   assignedTo?: unknown;
 };
 
-export function stringifyId(value: unknown): string {
+function stringifyIdInternal(value: unknown, seen: Set<unknown>): string {
   if (!value) return '';
   if (typeof value === 'string') return value;
   if (typeof value === 'object' && value !== null) {
-    if ('toString' in value && typeof value.toString === 'function') {
+    if (seen.has(value)) {
+      return '';
+    }
+    seen.add(value);
+
+    if (typeof value.toString === 'function') {
       const stringValue = value.toString();
       if (stringValue && stringValue !== '[object Object]') {
         return stringValue;
@@ -42,11 +47,15 @@ export function stringifyId(value: unknown): string {
     if ('_id' in value) {
       const nestedId = (value as { _id: unknown })._id;
       if (nestedId && nestedId !== value) {
-        return stringifyId(nestedId);
+        return stringifyIdInternal(nestedId, seen);
       }
     }
   }
   return String(value);
+}
+
+export function stringifyId(value: unknown): string {
+  return stringifyIdInternal(value, new Set());
 }
 
 export function toSerializable<T>(value: T): T {
