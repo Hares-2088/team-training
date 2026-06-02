@@ -31,11 +31,20 @@ type ResourceLike = {
 export function stringifyId(value: unknown): string {
   if (!value) return '';
   if (typeof value === 'string') return value;
-  if (typeof value === 'object' && value !== null && '_id' in value) {
-    return stringifyId((value as { _id: unknown })._id);
-  }
-  if (typeof value === 'object' && value !== null && 'toString' in value) {
-    return String(value);
+  if (typeof value === 'object' && value !== null) {
+    if ('toString' in value && typeof value.toString === 'function') {
+      const stringValue = value.toString();
+      if (stringValue && stringValue !== '[object Object]') {
+        return stringValue;
+      }
+    }
+
+    if ('_id' in value) {
+      const nestedId = (value as { _id: unknown })._id;
+      if (nestedId && nestedId !== value) {
+        return stringifyId(nestedId);
+      }
+    }
   }
   return String(value);
 }
