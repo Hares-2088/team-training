@@ -26,7 +26,6 @@ export default function CreateTrainingPageContent() {
         setError(null);
         try {
             if (!data.teamId) throw new Error('Please select a team');
-            if (!data.workouts || data.workouts.length === 0) throw new Error('At least one workout is required');
 
             // 1. Create the plan
             const planRes = await fetch('/api/plans', {
@@ -45,23 +44,25 @@ export default function CreateTrainingPageContent() {
             }
             const { plan } = await planRes.json();
 
-            // 2. Create a workout for each plan entry
-            for (const workout of data.workouts) {
-                const trainingRes = await fetch('/api/trainings', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        title: workout.title,
-                        scheduledDate: workout.scheduledDate,
-                        exercises: workout.exercises,
-                        team: data.teamId,
-                        isPersonal: data.isPersonal,
-                        planId: plan._id,
-                    }),
-                });
-                if (!trainingRes.ok) {
-                    const payload = await trainingRes.json();
-                    throw new Error(payload.error || `Failed to create workout "${workout.title}"`);
+            // 2. Create workouts if provided
+            if (Array.isArray(data.workouts) && data.workouts.length > 0) {
+                for (const workout of data.workouts) {
+                    const trainingRes = await fetch('/api/trainings', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            title: workout.title,
+                            scheduledDate: workout.scheduledDate,
+                            exercises: workout.exercises,
+                            team: data.teamId,
+                            isPersonal: data.isPersonal,
+                            planId: plan._id,
+                        }),
+                    });
+                    if (!trainingRes.ok) {
+                        const payload = await trainingRes.json();
+                        throw new Error(payload.error || `Failed to create workout "${workout.title}"`);
+                    }
                 }
             }
 
@@ -87,8 +88,8 @@ export default function CreateTrainingPageContent() {
                 </h1>
                 <p className="text-slate-600 dark:text-slate-400 mt-2">
                     {isPersonal
-                        ? 'Create a personal plan with one or more workouts. Only you can see this plan.'
-                        : 'Create a team plan composed of multiple workouts. Team members will see this plan.'}
+                        ? 'Create a personal plan and add workouts whenever you are ready.'
+                        : 'Create a team plan now and add workouts from the library later.'}
                 </p>
             </div>
 

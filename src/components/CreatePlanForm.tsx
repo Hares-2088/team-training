@@ -63,7 +63,7 @@ export function CreatePlanForm({
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [teamId, setTeamId] = useState(defaultTeamId);
-    const [workouts, setWorkouts] = useState<PlanWorkout[]>([defaultWorkout()]);
+    const [workouts, setWorkouts] = useState<PlanWorkout[]>([]);
     const [teams, setTeams] = useState<TeamOption[]>([]);
     const [exerciseOptions, setExerciseOptions] = useState<ComboboxOption[]>([]);
     const [validationError, setValidationError] = useState<string | null>(null);
@@ -176,14 +176,16 @@ export function CreatePlanForm({
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         setValidationError(null);
-        for (const workout of workouts) {
-            if (!workout.title) {
-                setValidationError('Each workout must have a title');
-                return;
-            }
-            if (!workout.scheduledDate) {
-                setValidationError('Each workout must have a scheduled date');
-                return;
+        if (workouts.length > 0) {
+            for (const workout of workouts) {
+                if (!workout.title) {
+                    setValidationError('Each workout must have a title');
+                    return;
+                }
+                if (!workout.scheduledDate) {
+                    setValidationError('Each workout must have a scheduled date');
+                    return;
+                }
             }
         }
         onSubmit({ title, description, teamId, isPersonal, workouts });
@@ -248,6 +250,12 @@ export function CreatePlanForm({
                                 + Add Workout
                             </Button>
                         </div>
+
+                        {workouts.length === 0 && (
+                            <div className="rounded-lg border border-dashed border-slate-300 dark:border-slate-700 px-4 py-6 text-center text-sm text-slate-600 dark:text-slate-400">
+                                No workouts added yet. You can create this plan now and add workouts later from the library.
+                            </div>
+                        )}
 
                         {workouts.map((workout, si) => (
                             <div key={`session-${si}`} className="border rounded-lg p-4 space-y-4 bg-slate-50 dark:bg-slate-900">

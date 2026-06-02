@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { Sparkles } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -45,6 +46,7 @@ export function GenerateAITrainingForm({ onSuccess }: Readonly<GenerateAITrainin
   const [injuries, setInjuries] = useState('');
   const [notes, setNotes] = useState('');
   const [isPersonal, setIsPersonal] = useState(!canManage);
+  const [aiEnabled, setAiEnabled] = useState(true);
   const [imageNote, setImageNote] = useState('');
   const [files, setFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -156,18 +158,52 @@ export function GenerateAITrainingForm({ onSuccess }: Readonly<GenerateAITrainin
       setError('Select a trainee first.');
       return;
     }
-    if (!title.trim() || !goalSummary.trim()) {
-      setError('Plan title and goal summary are required.');
+    if (!title.trim()) {
+      setError('Plan title is required.');
       return;
     }
-    if (availability.length === 0) {
-      setError('Select at least one available training day.');
-      return;
+    if (aiEnabled) {
+      if (!goalSummary.trim()) {
+        setError('Goal summary is required when AI is enabled.');
+        return;
+      }
+      if (availability.length === 0) {
+        setError('Select at least one available training day.');
+        return;
+      }
     }
 
     setIsSubmitting(true);
 
     try {
+      if (!aiEnabled) {
+        const response = await fetch('/api/plans', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: title.trim(),
+            description: notes.trim(),
+            team: teamId,
+            isPersonal,
+            assignee: canManage ? targetUserId : undefined,
+          }),
+        });
+
+        if (!response.ok) {
+          const payload = (await response.json()) as { error?: string };
+          throw new Error(payload.error || 'Failed to create plan');
+        }
+
+        const payload = (await response.json()) as { plan?: { _id?: string } };
+        if (!payload.plan?._id) {
+          throw new Error('Created plan is missing an id');
+        }
+
+        onSuccess(payload.plan._id);
+        return;
+      }
+
       const uploadedImageIds = await uploadImages(targetUserId);
       const response = await fetch('/api/ai/training/generate', {
         method: 'POST',
@@ -209,9 +245,23 @@ export function GenerateAITrainingForm({ onSuccess }: Readonly<GenerateAITrainin
   return (
     <Card className="w-full max-w-3xl">
       <CardHeader>
-        <CardTitle>Generate AI Training</CardTitle>
+        <div className="flex items-center justify-between gap-3">
+          <CardTitle>Generate Training</CardTitle>
+          <Button
+            type="button"
+            variant={aiEnabled ? 'default' : 'outline'}
+            size="sm"
+            className="gap-2"
+            onClick={() => setAiEnabled((current) => !current)}
+          >
+            <Sparkles className="h-4 w-4" />
+            AI
+          </Button>
+        </div>
         <CardDescription>
-          Build a structured plan from goals, availability, feedback, and optional progress images.
+          {aiEnabled
+            ? 'Build a structured plan from goals, availability, feedback, and optional progress images.'
+            : 'Create a plan shell now and add workouts later from your library.'}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -289,102 +339,118 @@ export function GenerateAITrainingForm({ onSuccess }: Readonly<GenerateAITrainin
             </div>
           </div>
 
-          <div>
-            <Label htmlFor="goal-summary">Goal Summary</Label>
-            <Textarea
-              id="goal-summary"
-              value={goalSummary}
-              onChange={(event) => setGoalSummary(event.target.value)}
-              className="mt-2"
-              rows={4}
-              placeholder="What outcome should this plan target?"
-              required
-            />
-          </div>
+          {aiEnabled ? (
+            <>
+              <div>
+                <Label htmlFor="goal-summary">Goal Summary</Label>
+                <Textarea
+                  id="goal-summary"
+                  value={goalSummary}
+                  onChange={(event) => setGoalSummary(event.target.value)}
+                  className="mt-2"
+                  rows={4}
+                  placeholder="What outcome should this plan target?"
+                  required={aiEnabled}
+                />
+              </div>
 
-          <div>
-            <Label>Availability</Label>
-            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-              {WEEKDAYS.map((day) => (
-                <label
-                  key={day}
-                  className="flex items-center gap-2 rounded-md border border-slate-200 px-3 py-2 text-sm dark:border-slate-800"
-                >
-                  <input
-                    type="checkbox"
-                    checked={availability.includes(day)}
-                    onChange={() => toggleAvailability(day)}
+              <div>
+                <Label>Availability</Label>
+                <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  {WEEKDAYS.map((day) => (
+                    <label
+                      key={day}
+                      className="flex items-center gap-2 rounded-md border border-slate-200 px-3 py-2 text-sm dark:border-slate-800"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={availability.includes(day)}
+                        onChange={() => toggleAvailability(day)}
+                      />
+                      <span>{day}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <Label htmlFor="preferences">Preferences</Label>
+                  <Textarea
+                    id="preferences"
+                    value={preferences}
+                    onChange={(event) => setPreferences(event.target.value)}
+                    className="mt-2"
+                    rows={4}
+                    placeholder="Preferred training style, equipment, cardio, split, etc."
                   />
-                  <span>{day}</span>
-                </label>
-              ))}
-            </div>
-          </div>
+                </div>
+                <div>
+                  <Label htmlFor="injuries">Injuries or Restrictions</Label>
+                  <Textarea
+                    id="injuries"
+                    value={injuries}
+                    onChange={(event) => setInjuries(event.target.value)}
+                    className="mt-2"
+                    rows={4}
+                    placeholder="Any current pain points, limitations, or movements to avoid"
+                  />
+                </div>
+              </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <Label htmlFor="notes">Coach Notes</Label>
+                <Textarea
+                  id="notes"
+                  value={notes}
+                  onChange={(event) => setNotes(event.target.value)}
+                  className="mt-2"
+                  rows={4}
+                  placeholder="Anything else the generator should account for"
+                />
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <Label htmlFor="progress-images">Optional Progress Images</Label>
+                  <Input
+                    id="progress-images"
+                    type="file"
+                    className="mt-2"
+                    accept="image/png,image/jpeg,image/webp"
+                    multiple
+                    onChange={(event) => setFiles(Array.from(event.target.files || []))}
+                  />
+                  <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                    Stored on the authenticated backend only and reused for this generation request.
+                  </p>
+                </div>
+                <div>
+                  <Label htmlFor="image-note">Image Note</Label>
+                  <Textarea
+                    id="image-note"
+                    value={imageNote}
+                    onChange={(event) => setImageNote(event.target.value)}
+                    className="mt-2"
+                    rows={4}
+                    placeholder="Optional context for uploaded images"
+                  />
+                </div>
+              </div>
+            </>
+          ) : (
             <div>
-              <Label htmlFor="preferences">Preferences</Label>
+              <Label htmlFor="notes">Plan Description (optional)</Label>
               <Textarea
-                id="preferences"
-                value={preferences}
-                onChange={(event) => setPreferences(event.target.value)}
+                id="notes"
+                value={notes}
+                onChange={(event) => setNotes(event.target.value)}
                 className="mt-2"
                 rows={4}
-                placeholder="Preferred training style, equipment, cardio, split, etc."
+                placeholder="Add a note for this plan"
               />
             </div>
-            <div>
-              <Label htmlFor="injuries">Injuries or Restrictions</Label>
-              <Textarea
-                id="injuries"
-                value={injuries}
-                onChange={(event) => setInjuries(event.target.value)}
-                className="mt-2"
-                rows={4}
-                placeholder="Any current pain points, limitations, or movements to avoid"
-              />
-            </div>
-          </div>
-
-          <div>
-            <Label htmlFor="notes">Coach Notes</Label>
-            <Textarea
-              id="notes"
-              value={notes}
-              onChange={(event) => setNotes(event.target.value)}
-              className="mt-2"
-              rows={4}
-              placeholder="Anything else the generator should account for"
-            />
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <Label htmlFor="progress-images">Optional Progress Images</Label>
-              <Input
-                id="progress-images"
-                type="file"
-                className="mt-2"
-                accept="image/png,image/jpeg,image/webp"
-                multiple
-                onChange={(event) => setFiles(Array.from(event.target.files || []))}
-              />
-              <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-                Stored on the authenticated backend only and reused for this generation request.
-              </p>
-            </div>
-            <div>
-              <Label htmlFor="image-note">Image Note</Label>
-              <Textarea
-                id="image-note"
-                value={imageNote}
-                onChange={(event) => setImageNote(event.target.value)}
-                className="mt-2"
-                rows={4}
-                placeholder="Optional context for uploaded images"
-              />
-            </div>
-          </div>
+          )}
 
           {error && (
             <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
@@ -393,7 +459,7 @@ export function GenerateAITrainingForm({ onSuccess }: Readonly<GenerateAITrainin
           )}
 
           <Button type="submit" className="w-full" size="lg" disabled={isSubmitting}>
-            {isSubmitting ? 'Generating...' : 'Generate AI Training'}
+            {isSubmitting ? 'Saving...' : aiEnabled ? 'Generate Training' : 'Create Plan'}
           </Button>
         </form>
       </CardContent>
