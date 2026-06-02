@@ -38,7 +38,7 @@ function stringifyIdInternal(value: unknown, seen: Set<unknown>): string {
     seen.add(value);
 
     const stringValue = String(value);
-    if (stringValue && stringValue !== '[object Object]') {
+    if (stringValue !== '[object Object]') {
       return stringValue;
     }
 
@@ -47,7 +47,10 @@ function stringifyIdInternal(value: unknown, seen: Set<unknown>): string {
       if (nestedId !== undefined && nestedId !== null) {
         return stringifyIdInternal(nestedId, seen);
       }
+      return '';
     }
+
+    return '';
   }
   return String(value);
 }
