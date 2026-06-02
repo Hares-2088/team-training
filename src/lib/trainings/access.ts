@@ -37,7 +37,7 @@ function stringifyIdInternal(value: unknown, seen: Set<unknown>): string {
     }
     seen.add(value);
 
-    if (typeof value.toString === 'function') {
+    if (typeof value.toString === 'function' && value.toString !== Object.prototype.toString) {
       const stringValue = value.toString();
       if (stringValue && stringValue !== '[object Object]') {
         return stringValue;
@@ -46,7 +46,7 @@ function stringifyIdInternal(value: unknown, seen: Set<unknown>): string {
 
     if ('_id' in value) {
       const nestedId = (value as { _id: unknown })._id;
-      if (nestedId && nestedId !== value) {
+      if (nestedId) {
         return stringifyIdInternal(nestedId, seen);
       }
     }
