@@ -75,9 +75,9 @@ export default function TeamsPage() {
                 throw new Error(payload.error || 'Failed to create team');
             }
             const payload = await res.json();
-            const team = payload.team || payload;
+            const team = (payload.team || payload) as Team;
             setTeams(prev => [team, ...prev]);
-            const membership = team.memberRoles?.find((m: any) => m.user === user?._id);
+            const membership = team.memberRoles?.find((member) => member.user === user?._id);
             const role = team.trainer?._id === user?._id ? 'trainer' : membership?.role || 'member';
             await setActiveTeam(team._id, role);
             setShowCreateForm(false);
@@ -100,12 +100,12 @@ export default function TeamsPage() {
             if (!res.ok) {
                 throw new Error(payload.error || 'Failed to join team');
             }
-            const team = payload.team || payload;
+            const team = (payload.team || payload) as Team;
             setTeams(prev => {
                 const existing = prev.find(t => t._id === team._id);
                 return existing ? prev : [team, ...prev];
             });
-            const membership = team.memberRoles?.find((m: any) => m.user === user?._id);
+            const membership = team.memberRoles?.find((member) => member.user === user?._id);
             const role = team.trainer?._id === user?._id ? 'trainer' : membership?.role || 'member';
             await setActiveTeam(team._id, role);
             setShowJoinDialog(false);
