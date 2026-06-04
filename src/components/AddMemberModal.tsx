@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Copy, Link as LinkIcon, Loader } from 'lucide-react';
+import { Copy, Loader } from 'lucide-react';
 
 type AddMemberModalProps = {
     isOpen: boolean;
@@ -58,7 +58,7 @@ export function AddMemberModal({ isOpen, onClose, teamId, teamName }: AddMemberM
                 <DialogHeader>
                     <DialogTitle>Add Team Member</DialogTitle>
                     <DialogDescription>
-                        Invite members to join "{teamName}"
+                        Invite members to join &quot;{teamName}&quot;
                     </DialogDescription>
                 </DialogHeader>
 

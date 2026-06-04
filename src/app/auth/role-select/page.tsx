@@ -198,7 +198,7 @@ export default function RoleSelectPage() {
                                 className="w-full mt-6"
                                 size="lg"
                             >
-                                I'm a Member
+                                I&apos;m a Member
                             </Button>
                         </CardContent>
                     </Card>

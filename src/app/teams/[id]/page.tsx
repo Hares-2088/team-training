@@ -5,9 +5,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { ThemeToggle } from '@/components/ThemeToggle';
 import { Navbar } from '@/components/Navbar';
 import { ChevronLeft, Edit, Trash2, Users, Mail, UserPlus, Eye, Award, User as UserIcon } from 'lucide-react';
 import { AddMemberModal } from '@/components/AddMemberModal';
@@ -358,7 +356,7 @@ export default function TeamDetailPage() {
                     <DialogHeader>
                         <DialogTitle>Delete Team</DialogTitle>
                         <DialogDescription>
-                            Are you sure you want to delete "<span className="font-semibold">{team?.name}</span>"? This action cannot be undone.
+                            Are you sure you want to delete &quot;<span className="font-semibold">{team?.name}</span>&quot;? This action cannot be undone.
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter className="gap-2">
@@ -388,7 +386,7 @@ export default function TeamDetailPage() {
                     <DialogHeader>
                         <DialogTitle>Remove Member</DialogTitle>
                         <DialogDescription>
-                            Are you sure you want to remove "<span className="font-semibold">{showRemoveMemberDialog.memberName}</span>" from the team?
+                            Are you sure you want to remove &quot;<span className="font-semibold">{showRemoveMemberDialog.memberName}</span>&quot; from the team?
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter className="gap-2">

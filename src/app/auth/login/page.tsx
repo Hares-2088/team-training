@@ -30,8 +30,8 @@ export default function Login() {
 
         try {
             await login(formData.email, formData.password);
-        } catch (err: any) {
-            setError(err.message || 'Invalid credentials');
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'Invalid credentials');
         } finally {
             setLoading(false);
         }
@@ -134,7 +134,7 @@ export default function Login() {
                             </form>
 
                             <p className="text-center text-sm text-slate-400 mt-8">
-                                Don't have an account?{' '}
+                                Don&apos;t have an account?{' '}
                                 <Link href="/auth/register" className="text-primary-400 hover:text-primary-300 transition-colors font-semibold hover:underline">
                                     Create one
                                 </Link>

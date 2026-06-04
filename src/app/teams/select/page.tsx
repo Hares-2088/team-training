@@ -7,10 +7,20 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Navbar } from '@/components/Navbar';
 import { useAuth } from '@/contexts/AuthContext';
 
+type TeamRole = 'trainer' | 'member' | 'coach';
+
+type Team = {
+    _id: string;
+    name: string;
+    description?: string;
+    trainer?: { _id: string };
+    members?: Array<{ _id: string; role?: TeamRole }>;
+};
+
 export default function SelectTeamPage() {
     const router = useRouter();
     const { activeTeam, setActiveTeam, user } = useAuth();
-    const [teams, setTeams] = useState<any[]>([]);
+    const [teams, setTeams] = useState<Team[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [settingId, setSettingId] = useState<string | null>(null);
@@ -23,12 +33,12 @@ export default function SelectTeamPage() {
                     const payload = await res.json();
                     throw new Error(payload.error || 'Failed to load teams');
                 }
-                const data = await res.json();
+                const data = await res.json() as Team[];
                 setTeams(data);
                 if (data.length === 1) {
                     const only = data[0];
-                    const membership = only.members?.find((m: any) => m._id === user?._id) || {};
-                    const role = only.trainer?._id === user?._id ? 'trainer' : membership.role || 'member';
+                    const membership = only.members?.find((member) => member._id === user?._id);
+                    const role = only.trainer?._id === user?._id ? 'trainer' : membership?.role || 'member';
                     await setActiveTeam(only._id, role);
                     router.push('/dashboard');
                 }
@@ -42,11 +52,11 @@ export default function SelectTeamPage() {
         loadTeams();
     }, [router, setActiveTeam, user]);
 
-    const handleSelect = async (team: any) => {
+    const handleSelect = async (team: Team) => {
         try {
             setSettingId(team._id);
-            const membership = team.members?.find((m: any) => m._id === user?._id) || {};
-            const role = team.trainer?._id === user?._id ? 'trainer' : membership.role || 'member';
+            const membership = team.members?.find((member) => member._id === user?._id);
+            const role = team.trainer?._id === user?._id ? 'trainer' : membership?.role || 'member';
             await setActiveTeam(team._id, role);
             router.push('/dashboard');
         } catch (err) {
